@@ -416,7 +416,7 @@ const tileCache=new Map();
 function ensureLoaded(p){if(p.mask||p.loading)return;p.loading=true;const im=new Image();
   im.onload=()=>{const w=im.naturalWidth,h=im.naturalHeight,c=mk(w,h),t=c.getContext('2d');t.drawImage(im,0,0);const id=t.getImageData(0,0,w,h),d=id.data;
     for(let i=0;i<d.length;i+=4){d[i+3]=d[i];d[i]=d[i+1]=d[i+2]=255}t.putImageData(id,0,0);p.mask=c;p.w=w;p.h=h;p.ver=(p.ver||0)+1;p.loading=false;syncLayers();schedule()};
-  im.onerror=()=>{p.loading=false;p.failed=true};im.src=p.src}
+  im.onerror=()=>{const alt=p.src.replace(/^stencils\//,'');if(alt!==p.src&&!p.triedAlt){p.triedAlt=true;p.src=alt;im.src=alt}else{p.loading=false;p.failed=true}};im.src=p.src}
 const EMPTY_TILE=mk(1,1);
 function getTile(name,color,single){if(PATTERNS[name]&&PATTERNS[name].lazy&&!PATTERNS[name].mask){ensureLoaded(PATTERNS[name]);return EMPTY_TILE}const p=PATTERNS[name],k=name+color+(p.ver||0)+(single?'s':'');if(!tileCache.has(k)){P5=single?[[128,128]]:P5ALL;const c=p.mask?mk(p.w,p.h):mk(256,256),t=c.getContext('2d');t.fillStyle=t.strokeStyle=color;t.lineCap='round';
   if(p.mask){t.fillRect(0,0,p.w,p.h);t.globalCompositeOperation='destination-in';t.drawImage(p.mask,0,0);t.globalCompositeOperation='source-over'}else p.draw(t);P5=P5ALL;tileCache.set(k,c)}return tileCache.get(k)}
@@ -725,7 +725,7 @@ function renderPicker(){const L=sel();if(!L)return;
   let n=0;gl.forEach(([g,items])=>{const hd=document.createElement('div');hd.className='pickgrp';hd.textContent=g+' ('+items.length+')';ph.appendChild(hd);
     items.forEach(([k,p])=>{n++;const w=document.createElement('div');w.className='patwrap';
       const b=document.createElement('button');b.type='button';b.className='pat';press(b,L.pattern===k);
-      b.innerHTML=`<img alt="" loading="lazy" src="${thumbs[k]||p.src}"><span>${p.label}${p.info?'<small>'+p.info+'</small>':''}</span>`;
+      b.innerHTML=`<img alt="" loading="lazy" src="${thumbs[k]||p.src}" onerror="if(!this.dataset.alt&&this.src.includes('/stencils/')){this.dataset.alt=1;this.src=this.src.replace('/stencils/','/')}"><span>${p.label}${p.info?'<small>'+p.info+'</small>':''}</span>`;
       b.onclick=()=>{closePicker();L.pattern=k;if(p.realH)L.sizeCm=Math.min(150,Math.round(p.realH));if(p.lazy)ensureLoaded(p);syncLayers();schedule()};w.appendChild(b);
       if(p.custom&&!p.preset){const x=document.createElement('button');x.type='button';x.className='patx';x.textContent='×';x.title='Eigene Schablone löschen';x.setAttribute('aria-label',p.label+' löschen');
         x.onclick=()=>{delete PATTERNS[k];state.layers.forEach(l=>{if(l.pattern===k)l.pattern=firstPat()});syncLayers();renderPicker();schedule()};w.appendChild(x)}
