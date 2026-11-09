@@ -3,8 +3,8 @@
   "short_name": "Wandstudio",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#2b2e30",
-  "theme_color": "#2b2e30",
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "lang": "de-CH",
   "icons": [
     {
