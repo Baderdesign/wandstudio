@@ -256,7 +256,7 @@ body.fs.tools .toolsbtn{right:min(380px,88vw)}
       <div class="field" id="sceneCtl">
         <div class="lbl">Elemente an der Standardwand</div>
         <div class="toggles" id="sceneBtns"></div>
-        <p class="hint">Tür (90 × 210 cm), Treppe (Steigung 17,5 cm) und Fenster stehen vor der Wand. Farbe und Schablonen laufen dahinter, so wie in echt.</p>
+        <p class="hint">Tür (90 × 210 cm), Treppe (Steigung 17,5 cm), Fenster und Steckdose stehen vor der Wand, Farbe und Schablonen laufen dahinter. Solange der Reiter <b>Wand</b> offen ist, verschiebst du sie direkt auf dem Bild mit Finger oder Maus.</p>
 
       </div>
       <div class="field">
@@ -611,19 +611,19 @@ function drawStd(t){
 }
 const SCENE=[['door','Tür'],['stairs','Treppe'],['window','Fenster'],['socket','Steckdose']];
 function cmS(v){return v*660/245}
-function drawDoor(t,sc){const x=sc&&sc.stairs?cmS(12):cmS(330),w=cmS(90),h=cmS(210),y=660-h,f=cmS(7);
+function drawDoor(t,sc){const x=cmS(elPos(sc).doorX),w=cmS(90),h=cmS(210),y=660-h,f=cmS(7);
   t.save();t.shadowColor='rgba(0,0,0,.35)';t.shadowBlur=10;t.shadowOffsetY=3;t.fillStyle='#f4f2ee';t.fillRect(x-f,y-f,w+2*f,h+f);t.restore();
   t.fillStyle='rgba(0,0,0,.12)';t.fillRect(x,y,w,h);
   let g=t.createLinearGradient(x,0,x+w,0);g.addColorStop(0,'#e9e4da');g.addColorStop(1,'#d9d2c4');t.fillStyle=g;t.fillRect(x+2,y+2,w-4,h-2);
   t.strokeStyle='rgba(0,0,0,.12)';t.lineWidth=2;[[.12,.07,.76,.38],[.12,.52,.76,.42]].forEach(([a,b,c,d])=>{t.strokeRect(x+w*a,y+h*b,w*c,h*d)});
   t.fillStyle='#8c8f93';rr(t,x+w-cmS(12),y+cmS(102),cmS(9),cmS(2.4),3);t.fill();t.beginPath();t.arc(x+w-cmS(10),y+cmS(103.2),cmS(2.2),0,7);t.fill();
   t.fillStyle='rgba(0,0,0,.18)';t.fillRect(x-f,y-f,w+2*f,2)}
-function drawWindow(t,sc){const x=sc&&sc.stairs&&sc.door?cmS(150):cmS(60),w=cmS(110),y=660-cmS(205),h=cmS(120),f=cmS(6);
+function drawWindow(t,sc){const P=elPos(sc),x=cmS(P.winX),w=cmS(110),y=660-cmS(P.winY+120),h=cmS(120),f=cmS(6);
   t.save();t.shadowColor='rgba(0,0,0,.3)';t.shadowBlur=8;t.shadowOffsetY=3;t.fillStyle='#f6f5f2';t.fillRect(x-f,y-f,w+2*f,h+2*f);t.restore();
   const g=t.createLinearGradient(0,y,0,y+h);g.addColorStop(0,'#bcd3e6');g.addColorStop(1,'#e7eff5');t.fillStyle=g;t.fillRect(x,y,w,h);
   t.fillStyle='rgba(255,255,255,.35)';t.beginPath();t.moveTo(x+w*.15,y);t.lineTo(x+w*.4,y);t.lineTo(x+w*.1,y+h);t.lineTo(x,y+h);t.lineTo(x,y+h*.6);t.closePath();t.fill();
   t.fillStyle='#f6f5f2';t.fillRect(x+w/2-cmS(3),y,cmS(6),h);t.fillRect(x-f*1.6,y+h+f-2,w+f*3.2,cmS(4));t.fillStyle='rgba(0,0,0,.15)';t.fillRect(x-f*1.6,y+h+f-2+cmS(4),w+f*3.2,2)}
-function drawStairs(t){const n=13,rise=cmS(17.5),run=cmS(26),x0=cmS(445)-n*run-cmS(10),nose=cmS(3),th=cmS(4);
+function drawStairs(t,sc){const n=13,rise=cmS(17.5),run=cmS(26),x0=cmS(elPos(sc).stairsX),nose=cmS(3),th=cmS(4);
   t.save();t.fillStyle='rgba(0,0,0,.10)';t.beginPath();t.moveTo(x0,660);for(let i=0;i<n;i++){t.lineTo(x0+i*run,660-(i+1)*rise);t.lineTo(x0+(i+1)*run,660-(i+1)*rise)}t.lineTo(x0+n*run,660);t.closePath();t.fill();t.restore();
   const sb=cmS(28);t.fillStyle='#f3f1ec';t.beginPath();t.moveTo(x0-cmS(6),660);for(let i=0;i<n;i++){t.lineTo(x0+i*run-cmS(6),660-(i+1)*rise+th)}t.lineTo(x0+n*run,660-n*rise+th);
   t.lineTo(x0+n*run,660-n*rise+th+sb);t.lineTo(x0+sb*run/rise,660);t.closePath();
@@ -632,8 +632,20 @@ function drawStairs(t){const n=13,rise=cmS(17.5),run=cmS(26),x0=cmS(445)-n*run-c
     t.fillStyle='rgba(60,35,15,.25)';t.fillRect(x,y+th,run+nose,1.5)}
   t.strokeStyle='#5a5f63';t.lineWidth=cmS(4);t.lineCap='round';const hy=cmS(90);t.beginPath();t.moveTo(x0+run*.5,660-rise-hy);t.lineTo(x0+(n-.5)*run,660-n*rise-hy);t.stroke();
   t.lineWidth=cmS(1.6);for(let i=0;i<n;i+=3){const x=x0+(i+.5)*run,y=660-(i+1)*rise;t.beginPath();t.moveTo(x,y);t.lineTo(x,y-hy);t.stroke()}}
-function drawStdFg(t,scene){const sc=scene||state.scene||{};if(sc.window)drawWindow(t,sc);if(sc.door)drawDoor(t,sc);if(sc.stairs)drawStairs(t);if(sc.socket===false)return;t.save();t.shadowColor='rgba(0,0,0,.25)';t.shadowBlur=6;t.shadowOffsetY=2;t.fillStyle='#fbfaf8';rr(t,176,402,46,46,5);t.fill();t.restore();
-  t.fillStyle='#efede9';rr(t,186,412,26,26,3);t.fill();t.fillStyle='rgba(0,0,0,.12)';t.fillRect(186,424,26,1)}
+function drawStdFg(t,scene){const sc=scene||state.scene||{};if(sc.window)drawWindow(t,sc);if(sc.door)drawDoor(t,sc);if(sc.stairs)drawStairs(t,sc);if(sc.socket===false)return;const P=elPos(sc),sx=cmS(P.sockX),sy=660-cmS(P.sockY)-46;t.save();t.shadowColor='rgba(0,0,0,.25)';t.shadowBlur=6;t.shadowOffsetY=2;t.fillStyle='#fbfaf8';rr(t,sx,sy,46,46,5);t.fill();t.restore();
+  t.fillStyle='#efede9';rr(t,sx+10,sy+10,26,26,3);t.fill();t.fillStyle='rgba(0,0,0,.12)';t.fillRect(sx+10,sy+22,26,1)}
+function elPos(sc){sc=sc||{};return{doorX:sc.doorX??330,winX:sc.winX??60,winY:sc.winY??85,stairsX:sc.stairsX??97,sockX:sc.sockX??65,sockY:sc.sockY??79}}
+function elBoxes(sc){const P=elPos(sc),b=[];if(sc.socket!==false)b.push(['sock',cmS(P.sockX)-6,660-cmS(P.sockY)-52,58,58]);
+  if(sc.door)b.push(['door',cmS(P.doorX-7),660-cmS(217),cmS(104),cmS(217)]);if(sc.window)b.push(['win',cmS(P.winX-8),660-cmS(P.winY+128),cmS(126),cmS(140)]);
+  if(sc.stairs)b.push(['stairs',cmS(P.stairsX-8),660-cmS(13*17.5+90),cmS(13*26+10),cmS(13*17.5+90)]);return b}
+function hitEl(p){const sc=state.scene||{},bs=elBoxes(sc);for(let i=0;i<bs.length;i++){const [k,x,y,w,h]=bs[i];if(p[0]>=x&&p[0]<=x+w&&p[1]>=y&&p[1]<=y+h)return k}
+  if(sc.stairs){const P=elPos(sc),x0=cmS(P.stairsX);if(p[0]>=x0&&p[0]<=x0+cmS(338)){const st=(p[0]-x0)/cmS(26);if(p[1]>=660-cmS((st+1)*17.5+95)&&p[1]<=660)return 'stairs'}}return null}
+function moveEl(k,dxCm,dyCm){const sc=state.scene||(state.scene={}),P=elPos(sc),Wc=state.wallM*100;
+  if(k==='door')sc.doorX=Math.max(0,Math.min(Wc-90,P.doorX+dxCm));
+  if(k==='win'){sc.winX=Math.max(0,Math.min(Wc-110,P.winX+dxCm));sc.winY=Math.max(10,Math.min(245-125,P.winY+dyCm))}
+  if(k==='stairs')sc.stairsX=Math.max(-300,Math.min(Wc-40,P.stairsX+dxCm));
+  if(k==='sock'){sc.sockX=Math.max(0,Math.min(Wc-18,P.sockX+dxCm));sc.sockY=Math.max(0,Math.min(245-18,P.sockY+dyCm))}}
+function wandTab(){const t=document.getElementById('t-wand');return t&&t.getAttribute('aria-selected')==='true'}
 
 function drawBg(t){if(state.src==='std')drawStd(t);else t.drawImage(state.img,0,0,PW,PH)}
 
@@ -799,6 +811,7 @@ cv.addEventListener('pointerdown',e=>{pts.set(e.pointerId,vpPt(e));(()=>{try{cv.
     else{let bs=null,bsd=1e9;sets.forEach(([g,pts])=>pts.forEach((a,i)=>{const b=pts[(i+1)%pts.length],dx=b[0]-a[0],dy=b[1]-a[1],l2=dx*dx+dy*dy||1,t=Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/l2)),d=Math.hypot(a[0]+t*dx-p[0],a[1]+t*dy-p[1]);if(d<bsd){bsd=d;bs=[g,i]}}));
       if(bs&&bsd<hit*1.2){pushHist(true);const pts=bs[0]<0?state.outline:state.holes[bs[0]];pts.splice(bs[1]+1,0,[p[0],p[1]]);state.ptSel=[bs[0],bs[1]+1];drag={type:'op',s0:p.slice(),p0:p.slice(),noSnap:false};syncOut();schedule()}else{state.ptSel=null;syncOut();schedule();return}}
     (()=>{try{cv.setPointerCapture(e.pointerId)}catch(_){}})();e.preventDefault();return}
+  if(state.src==='std'&&!state.editWall&&!state.editOut&&(wandTab()||!sel())){const k=hitEl(ps);if(k){pushHist(true);drag={type:'el',k,last:ps};cv.classList.add('grabbing');(()=>{try{cv.setPointerCapture(e.pointerId)}catch(_){}})();e.preventDefault();return}}
   if(state.editWall){const p=ps;let best=-1,bd=1e9;state.poly.forEach(([x,y],i)=>{const d=Math.hypot(x-p[0],y-p[1]);if(d<bd){bd=d;best=i}});
     if(bd<hit*1.6){pushHist(true);const q=state.poly[best];drag={type:'h',i:best,s0:p.slice(),p0:q.slice(),cur:q.slice(),noSnap:nearCorner(q)}}else return}
   else{const L=sel();if(!L)return;
@@ -825,6 +838,7 @@ function rel(L,p){const [ax,ay]=anchor(L),px=pxPerCm()*L.sizeCm,a=-(L.rot||0)*Ma
 cv.addEventListener('pointermove',e=>{if(drag&&(drag.type==='h'||drag.type==='op')&&e.pointerType!=='mouse')requestAnimationFrame(()=>requestAnimationFrame(()=>showLoupe(e)));if(pts.has(e.pointerId))pts.set(e.pointerId,vpPt(e));
   if(pinch&&pts.size>=2){const i=pinchInfo(),cx=(pinch.m0[0]-pinch.tx0)/pinch.z0,cy=(pinch.m0[1]-pinch.ty0)/pinch.z0;view.z=Math.max(1,Math.min(6,pinch.z0*i.d/pinch.d0));view.tx=i.m[0]-cx*view.z;view.ty=i.m[1]-cy*view.z;applyView();return}
   if(!drag)return;const ps=pos(e),p=(drag.type==='h'||drag.type==='op')?ps:toFlat(ps);
+  if(drag.type==='el'){const k=660/245,dx=(ps[0]-drag.last[0])/k,dy=-(ps[1]-drag.last[1])/k;drag.last=ps;moveEl(drag.k,dx,dy);schedule();return}
   if(drag.type==='op'){const [g,i]=state.ptSel,pts=g<0?state.outline:state.holes[g],t=[drag.p0[0]+p[0]-drag.s0[0],drag.p0[1]+p[1]-drag.s0[1]],[q,sn]=drag.noSnap?[t,false]:snapPt(t,pts[i]);drag.cur=q;state.snapped=sn;pts[i]=[Math.max(0,Math.min(PW,q[0])),Math.max(0,Math.min(PH,q[1]))];schedule();return}
   if(drag.type==='pull'){drag.stroke.pts[1]=irel(sel(),p);state.lastPt=ps;state.cursor=true;schedule();return}
   if(drag.type==='b'){drag.stroke.pts.push(drag.isl?irel(sel(),p):rel(sel(),p));state.lastPt=ps;schedule();return}
@@ -851,7 +865,7 @@ function snapPt(p,self){const cs=state.corners;if(!cs||!cs.length||!state.snapOn
   const others=[];if(state.editOut){[state.outline||[]].concat(state.holes||[]).forEach(a=>a.forEach(q=>{if(q!==self)others.push(q)}))}else state.poly.forEach(q=>{if(q!==self)others.push(q)});
   let best=null,bd=R;for(const c of cs){const d=Math.hypot(c[0]-p[0],c[1]-p[1]);if(d<bd&&!others.some(o=>Math.hypot(o[0]-c[0],o[1]-c[1])<eps)){bd=d;best=c}}return best?[[best[0],best[1]],true]:[p,false]}
 function hideLoupe(){const lp=$('#loupe');if(lp)lp.hidden=true}
-const endDrag=e=>{hideLoupe();state.snapped=false;pts.delete(e.pointerId);if(drag&&drag.type==='pull'){state.cursor=false;schedule()}if(pinch){if(pts.size<2)pinch=null;return}if(drag&&drag.type==='h'){refitFlat();scaleTxt();schedule()}drag=null};
+const endDrag=e=>{cv.classList.remove('grabbing');hideLoupe();state.snapped=false;pts.delete(e.pointerId);if(drag&&drag.type==='pull'){state.cursor=false;schedule()}if(pinch){if(pts.size<2)pinch=null;return}if(drag&&drag.type==='h'){refitFlat();scaleTxt();schedule()}drag=null};
 cv.addEventListener('pointerdown',e=>{if(drag&&(drag.type==='h'||drag.type==='op')&&e.pointerType!=='mouse'){requestAnimationFrame(()=>requestAnimationFrame(()=>showLoupe(e)))}});
 cv.addEventListener('pointerup',endDrag);cv.addEventListener('pointercancel',endDrag);
 
