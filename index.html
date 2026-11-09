@@ -238,7 +238,7 @@ body.fs.tools .toolsbtn{right:min(380px,88vw)}
         <p class="hint"><b>Ecken:</b> die vier gelben Punkte auf die vier Ecken der Wand ziehen. Daraus berechnet die App die Perspektive.</p>
         <p class="hint"><b>Umriss:</b> legt genau fest, wo gemalt wird. Auf eine Linie tippen setzt einen neuen Punkt, Punkte lassen sich verschieben. So folgst du Dachschrägen, Türen oder Möbeln. Mit „+ Aussparung“ schneidest du Flächen heraus, z. B. einen Schrank, ein Fenster oder eine Steckdose.</p>
         <div class="seg" id="snapCtl"><button class="chipb" id="snapTgl" type="button" aria-pressed="true">Ecken einrasten: an</button><button class="chipb" id="autoCorners" type="button">Ecken automatisch suchen</button></div>
-        <p class="hint">Beim Ziehen springt ein Punkt automatisch auf eine erkannte Ecke im Foto, die Lupe wird dann grün. „Ecken automatisch suchen“ setzt jeden der vier gelben Punkte auf die deutlichste Ecke in seiner Nähe. Punkte dafür grob in die Nähe der Wandecken ziehen.</p>
+        <p class="hint">Beim ersten Ziehen springt ein Punkt auf eine erkannte Ecke im Foto (Lupe und Punkt werden grün). Sitzt ein Punkt schon auf einer Ecke, springt er nicht mehr: dann lässt er sich millimetergenau verschieben. Der Punkt bleibt beim Antippen stehen und bewegt sich genau so weit wie dein Finger, die Lupe zeigt immer den Punkt. „Ecken automatisch suchen“ setzt die vier gelben Punkte auf die deutlichsten Ecken in ihrer Nähe.</p>
         <div class="seg" id="outCtl" hidden>
           <button class="chipb" id="addHole" type="button">+ Aussparung</button>
           <button class="chipb" id="delPt" type="button" disabled>Gewählten Punkt löschen</button>
@@ -711,12 +711,12 @@ cv.addEventListener('pointerdown',e=>{pts.set(e.pointerId,vpPt(e));(()=>{try{cv.
   const ps=pos(e),p=state.editWall?ps:toFlat(ps),r=cv.getBoundingClientRect(),hit=34*PW/r.width;
   if(state.editOut){const p=ps,sets=[[-1,state.outline||(state.outline=state.poly.map(q=>q.slice()))]].concat((state.holes||[]).map((h,i)=>[i,h]));let best=null,bd=1e9;
     sets.forEach(([g,pts])=>pts.forEach(([x,y],i)=>{const d=Math.hypot(x-p[0],y-p[1]);if(d<bd){bd=d;best=[g,i]}}));
-    if(bd<hit*1.4){pushHist(true);state.ptSel=best;drag={type:'op'};syncOut();schedule()}
+    if(bd<hit*1.4){pushHist(true);state.ptSel=best;{const pts=best[0]<0?state.outline:state.holes[best[0]],q=pts[best[1]];drag={type:'op',s0:p.slice(),p0:q.slice(),cur:q.slice(),noSnap:nearCorner(q)}};syncOut();schedule()}
     else{let bs=null,bsd=1e9;sets.forEach(([g,pts])=>pts.forEach((a,i)=>{const b=pts[(i+1)%pts.length],dx=b[0]-a[0],dy=b[1]-a[1],l2=dx*dx+dy*dy||1,t=Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/l2)),d=Math.hypot(a[0]+t*dx-p[0],a[1]+t*dy-p[1]);if(d<bsd){bsd=d;bs=[g,i]}}));
-      if(bs&&bsd<hit*1.2){pushHist(true);const pts=bs[0]<0?state.outline:state.holes[bs[0]];pts.splice(bs[1]+1,0,[p[0],p[1]]);state.ptSel=[bs[0],bs[1]+1];drag={type:'op'};syncOut();schedule()}else{state.ptSel=null;syncOut();schedule();return}}
+      if(bs&&bsd<hit*1.2){pushHist(true);const pts=bs[0]<0?state.outline:state.holes[bs[0]];pts.splice(bs[1]+1,0,[p[0],p[1]]);state.ptSel=[bs[0],bs[1]+1];drag={type:'op',s0:p.slice(),p0:p.slice(),noSnap:false};syncOut();schedule()}else{state.ptSel=null;syncOut();schedule();return}}
     (()=>{try{cv.setPointerCapture(e.pointerId)}catch(_){}})();e.preventDefault();return}
   if(state.editWall){const p=ps;let best=-1,bd=1e9;state.poly.forEach(([x,y],i)=>{const d=Math.hypot(x-p[0],y-p[1]);if(d<bd){bd=d;best=i}});
-    if(bd<hit*1.6){pushHist(true);drag={type:'h',i:best}}else return}
+    if(bd<hit*1.6){pushHist(true);const q=state.poly[best];drag={type:'h',i:best,s0:p.slice(),p0:q.slice(),cur:q.slice(),noSnap:nearCorner(q)}}else return}
   else{const L=sel();if(!L)return;
     pushHist(true);if(state.tool==='move')drag={type:'l',last:p};else if(state.tool==='iscale'){const px=pxPerCm()*L.sizeCm,q=irel(L,p),cur={t:'iadd',w:Math.max(4,state.brushCm*pxPerCm())/px/L.iscale,pts:[q,q.slice()]};L.istrokes=(L.istrokes||[]).concat([cur]);drag={type:'pull',stroke:cur};state.lastPt=ps;schedule()}
     else if(state.tool==='iadd'||state.tool==='isub'){const px=pxPerCm()*L.sizeCm,cur={t:state.tool,w:Math.max(4,state.brushCm*pxPerCm())/px/L.iscale,pts:[irel(L,p)]};L.istrokes=(L.istrokes||[]).concat([cur]);drag={type:'b',stroke:cur,isl:true};state.lastPt=ps;schedule()}else{const px=pxPerCm()*L.sizeCm,cur={t:state.tool,w:Math.max(4,state.brushCm*pxPerCm())/px,pts:[rel(L,p)]};L.strokes=(L.strokes||[]).concat([cur]);drag={type:'b',stroke:cur};state.lastPt=ps;schedule()}}
@@ -741,14 +741,14 @@ function rel(L,p){const [ax,ay]=anchor(L),px=pxPerCm()*L.sizeCm,a=-(L.rot||0)*Ma
 cv.addEventListener('pointermove',e=>{if(drag&&(drag.type==='h'||drag.type==='op')&&e.pointerType!=='mouse')requestAnimationFrame(()=>requestAnimationFrame(()=>showLoupe(e)));if(pts.has(e.pointerId))pts.set(e.pointerId,vpPt(e));
   if(pinch&&pts.size>=2){const i=pinchInfo(),cx=(pinch.m0[0]-pinch.tx0)/pinch.z0,cy=(pinch.m0[1]-pinch.ty0)/pinch.z0;view.z=Math.max(1,Math.min(6,pinch.z0*i.d/pinch.d0));view.tx=i.m[0]-cx*view.z;view.ty=i.m[1]-cy*view.z;applyView();return}
   if(!drag)return;const ps=pos(e),p=(drag.type==='h'||drag.type==='op')?ps:toFlat(ps);
-  if(drag.type==='op'){const [g,i]=state.ptSel,pts=g<0?state.outline:state.holes[g],[q,sn]=snapPt(p,pts[i]);state.snapped=sn;pts[i]=[Math.max(0,Math.min(PW,q[0])),Math.max(0,Math.min(PH,q[1]))];schedule();return}
+  if(drag.type==='op'){const [g,i]=state.ptSel,pts=g<0?state.outline:state.holes[g],t=[drag.p0[0]+p[0]-drag.s0[0],drag.p0[1]+p[1]-drag.s0[1]],[q,sn]=drag.noSnap?[t,false]:snapPt(t,pts[i]);drag.cur=q;state.snapped=sn;pts[i]=[Math.max(0,Math.min(PW,q[0])),Math.max(0,Math.min(PH,q[1]))];schedule();return}
   if(drag.type==='pull'){drag.stroke.pts[1]=irel(sel(),p);state.lastPt=ps;state.cursor=true;schedule();return}
   if(drag.type==='b'){drag.stroke.pts.push(drag.isl?irel(sel(),p):rel(sel(),p));state.lastPt=ps;schedule();return}
-  if(drag.type==='h'){{const [q,sn]=snapPt(p,state.poly[drag.i]);state.snapped=sn;state.poly[drag.i]=[Math.max(0,Math.min(PW,q[0])),Math.max(0,Math.min(PH,q[1]))]};homo=computeHomo()}
+  if(drag.type==='h'){{const t=[drag.p0[0]+p[0]-drag.s0[0],drag.p0[1]+p[1]-drag.s0[1]],[q,sn]=drag.noSnap?[t,false]:snapPt(t,state.poly[drag.i]);drag.cur=q;state.snapped=sn;state.poly[drag.i]=[Math.max(0,Math.min(PW,q[0])),Math.max(0,Math.min(PH,q[1]))]};homo=computeHomo()}
   else{const L=sel(),dx=p[0]-drag.last[0],dy=p[1]-drag.last[1];drag.last=p;
     if(L.mode==='flaeche'){L.ox+=dx;L.oy+=dy}else if(L.mode==='bordure'){L.ox+=dx;L.y+=dy}else{L.x+=dx;L.y+=dy}}
   schedule()});
-function showLoupe(e){const lp=$('#loupe');if(!lp)return;const r=cv.getBoundingClientRect(),k=PW/r.width,cx=(e.clientX-r.left)*k,cy=(e.clientY-r.top)*k,mag=2.5,src=120*k/mag;
+function showLoupe(e){const lp=$('#loupe');if(!lp)return;const r=cv.getBoundingClientRect(),k=PW/r.width,cp=(drag&&drag.cur)?drag.cur:[(e.clientX-r.left)*k,(e.clientY-r.top)*k],cx=cp[0],cy=cp[1],mag=3,src=120*k/mag;
   const t=lp.getContext('2d');t.setTransform(1,0,0,1,0,0);t.fillStyle='#000';t.fillRect(0,0,240,240);t.imageSmoothingEnabled=true;t.drawImage(cv,cx-src/2,cy-src/2,src,src,0,0,240,240);
   t.strokeStyle='rgba(0,0,0,.7)';t.lineWidth=4;t.beginPath();t.moveTo(120,96);t.lineTo(120,144);t.moveTo(96,120);t.lineTo(144,120);t.stroke();t.strokeStyle=state.snapped?'#3ddc84':'#ffd23f';t.lineWidth=2;t.stroke();
   let x=e.clientX-60,y=e.clientY-160;if(y<8)y=e.clientY+50;x=Math.max(8,Math.min(window.innerWidth-128,x));lp.style.left=x+'px';lp.style.top=y+'px';lp.hidden=false}
@@ -760,6 +760,7 @@ function detectCorners(){state.corners=[];if(state.src!=='foto'||!state.img)retu
   const A=box(xx),B=box(yy),C=box(xy),Rm=new Float32Array(w*h);let mx=0;for(let i=0;i<Rm.length;i++){const v=A[i]*B[i]-C[i]*C[i]-.05*(A[i]+B[i])**2;Rm[i]=v;if(v>mx)mx=v}
   const th=mx*.01,pts=[],N=5;for(let y=N;y<h-N;y++)for(let x=N;x<w-N;x++){const v=Rm[y*w+x];if(v<th)continue;let ok=true;for(let dy=-N;dy<=N&&ok;dy++)for(let dx=-N;dx<=N;dx++){if(Rm[(y+dy)*w+x+dx]>v){ok=false;break}}if(ok)pts.push([x/sc,y/sc,v])}
   pts.sort((a,b)=>b[2]-a[2]);state.corners=pts.slice(0,300)}
+function nearCorner(q){const cs=state.corners;if(!cs||!cs.length)return false;const r=cv.getBoundingClientRect(),R=6*PW/r.width;return cs.some(c=>Math.hypot(c[0]-q[0],c[1]-q[1])<R)}
 function snapPt(p,self){const cs=state.corners;if(!cs||!cs.length||!state.snapOn)return[p,false];const r=cv.getBoundingClientRect(),R=14*PW/r.width,eps=2*PW/r.width;
   const others=[];if(state.editOut){[state.outline||[]].concat(state.holes||[]).forEach(a=>a.forEach(q=>{if(q!==self)others.push(q)}))}else state.poly.forEach(q=>{if(q!==self)others.push(q)});
   let best=null,bd=R;for(const c of cs){const d=Math.hypot(c[0]-p[0],c[1]-p[1]);if(d<bd&&!others.some(o=>Math.hypot(o[0]-c[0],o[1]-c[1])<eps)){bd=d;best=c}}return best?[[best[0],best[1]],true]:[p,false]}
