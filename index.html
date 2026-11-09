@@ -264,6 +264,11 @@ hr{border:0;border-top:1px solid var(--line);margin:0}
           <input type="range" id="size" min="5" max="150" value="40">
         </div>
         <div class="field">
+          <label class="lbl" for="rot">Drehen <output id="rotOut"></output></label>
+          <input type="range" id="rot" min="-180" max="180" value="0">
+          <div class="seg"><button class="chipb" id="rotL" type="button">↺ 90°</button><button class="chipb" id="rotM" type="button">− 5°</button><button class="chipb" id="rot0" type="button">0°</button><button class="chipb" id="rotP" type="button">+ 5°</button><button class="chipb" id="rotR" type="button">↻ 90°</button></div>
+        </div>
+        <div class="field">
           <label class="lbl" for="opac">Deckkraft <output id="opacOut"></output></label>
           <input type="range" id="opac" min="10" max="100" value="85">
         </div>
@@ -506,17 +511,18 @@ function buildShade(){const c=mk(W,H),t=c.getContext('2d');drawBg(t);const id=t.
 
 function drawLayer(w,L,mask){const lt=lc.getContext('2d');lt.setTransform(1,0,0,1,0,0);lt.globalCompositeOperation='source-over';lt.clearRect(0,0,W,H);
   const tile=getTile(L.pattern,L.color,L.mode==='motiv'),px=pxPerCm()*L.sizeCm,sc=px/tile.height,tw=tile.width*sc;
-  if(L.mode==='motiv'){lt.drawImage(tile,L.x-tw/2,L.y-px/2,tw,px)}
-  else{const p=lt.createPattern(tile,'repeat');const y0=L.mode==='bordure'?L.y:L.oy;
-    if(p.setTransform)p.setTransform(new DOMMatrix([sc,0,0,sc,L.ox,y0]));lt.fillStyle=p;
-    if(L.mode==='bordure')lt.fillRect(0,L.y,W,px);else lt.fillRect(0,0,W,H)}
+  const rad=(L.rot||0)*Math.PI/180;
+  if(L.mode==='motiv'){lt.save();lt.translate(L.x,L.y);lt.rotate(rad);lt.drawImage(tile,-tw/2,-px/2,tw,px);lt.restore()}
+  else{const p=lt.createPattern(tile,'repeat');const [ax,ay]=anchor(L);lt.save();lt.translate(ax,ay);lt.rotate(rad);
+    if(p.setTransform)p.setTransform(new DOMMatrix([sc,0,0,sc,0,0]));lt.fillStyle=p;const D=(W+H)*2;
+    if(L.mode==='bordure')lt.fillRect(-D,0,2*D,px);else lt.fillRect(-D,-D,2*D,2*D);lt.restore()}
   if(L.rand){const r=Math.max(2,px/40),it=ec.getContext('2d');it.globalCompositeOperation='source-over';it.clearRect(0,0,W,H);it.drawImage(lc,0,0);it.globalCompositeOperation='destination-in';
     for(let a=0;a<8;a++)it.drawImage(lc,Math.cos(a*Math.PI/4)*r,Math.sin(a*Math.PI/4)*r);it.globalCompositeOperation='source-over';
     lt.globalCompositeOperation='destination-out';lt.globalAlpha=.78;lt.drawImage(ec,0,0);lt.globalAlpha=1;lt.globalCompositeOperation='source-over'}
   if(L.spachtel){lt.globalCompositeOperation='destination-in';lt.drawImage(spachtelMask(L),0,0);lt.globalCompositeOperation='source-over'}
   if(L.strokes&&L.strokes.length){const et=er.getContext('2d'),[ax,ay]=anchor(L);et.globalCompositeOperation='source-over';et.clearRect(0,0,W,H);et.strokeStyle='#000';et.lineCap=et.lineJoin='round';
     for(const st of L.strokes){et.globalCompositeOperation=st.t==='erase'?'source-over':'destination-out';et.lineWidth=st.w*px;et.beginPath();
-      st.pts.forEach(([u,v],i)=>{const x=ax+u*px,y=ay+v*px;i?et.lineTo(x,y):et.moveTo(x,y)});if(st.pts.length===1)et.lineTo(ax+st.pts[0][0]*px+.01,ay+st.pts[0][1]*px);et.stroke()}
+      st.pts.forEach(([u,v],i)=>{const [x,y]=toW(L,u,v);i?et.lineTo(x,y):et.moveTo(x,y)});if(st.pts.length===1){const [x,y]=toW(L,st.pts[0][0],st.pts[0][1]);et.lineTo(x+.01,y)}et.stroke()}
     lt.globalCompositeOperation='destination-out';lt.drawImage(er,0,0);lt.globalCompositeOperation='source-over'}
   if(L.metallic){lt.globalCompositeOperation='source-atop';const g=lt.createLinearGradient(0,0,W,H);
     [[0,'rgba(255,255,255,.5)'],[.2,'rgba(0,0,0,.28)'],[.42,'rgba(255,255,255,.45)'],[.63,'rgba(0,0,0,.3)'],[.82,'rgba(255,255,255,.4)'],[1,'rgba(0,0,0,.2)']].forEach(([o,c])=>g.addColorStop(o,c));
@@ -600,7 +606,7 @@ const fcache=new Map();function fractalCache(seed){const k=seed+'|'+W+'x'+H;if(f
   const f=fractal(W,H,[[90,1],[30,.7],[9,.4],[3,.25]],seed),t=f.getContext('2d'),id=t.getImageData(0,0,W,H),d=id.data;
   for(let i=0;i<d.length;i+=4){const v=Math.max(0,Math.min(255,(d[i]-128)*3+128));d[i+3]=v}t.putImageData(id,0,0);fcache.set(k,f);return f}
 function islandMask(L){const t=im2.getContext('2d');t.globalCompositeOperation='source-over';t.clearRect(0,0,W,H);t.strokeStyle='#000';t.lineCap=t.lineJoin='round';
-  const [ax,ay]=anchor(L),px=pxPerCm()*L.sizeCm,[cx,cy]=L.icenter,s=L.iscale,tp=([u,v])=>[ax+(cx+(u-cx)*s)*px,ay+(cy+(v-cy)*s)*px];
+  const px=pxPerCm()*L.sizeCm,[cx,cy]=L.icenter,s=L.iscale,tp=([u,v])=>toW(L,cx+(u-cx)*s,cy+(v-cy)*s);
   for(const st of L.istrokes){t.globalCompositeOperation=st.t==='iadd'?'source-over':'destination-out';t.lineWidth=st.w*s*px;t.beginPath();st.pts.forEach((q,i)=>{const [x,y]=tp(q);i?t.lineTo(x,y):t.moveTo(x,y)});if(st.pts.length===1){const [x,y]=tp(st.pts[0]);t.lineTo(x+.01,y)}t.stroke()}
   t.globalCompositeOperation='source-over';const sw=Math.max(8,Math.round(W/10)),shh=Math.max(8,Math.round(H/10)),sm=mk(sw,shh),st2=sm.getContext('2d');st2.imageSmoothingEnabled=true;st2.drawImage(im2,0,0,sw,shh);
   t.clearRect(0,0,W,H);t.imageSmoothingEnabled=true;t.imageSmoothingQuality='high';t.drawImage(sm,0,0,W,H);
@@ -608,10 +614,11 @@ function islandMask(L){const t=im2.getContext('2d');t.globalCompositeOperation='
     let mn=255,mx=0;for(let i=0;i<nz.length;i+=7){if(nz[i]<mn)mn=nz[i];if(nz[i]>mx)mx=nz[i]}const r=Math.max(1,mx-mn);for(let i=0;i<nz.length;i++)nz[i]=Math.max(0,Math.min(255,(nz[i]-mn)*255/r));noiseCache.set(k,nz)}
   const id=t.getImageData(0,0,W,H),d=id.data;for(let i=0,j=3;i<nz.length;i++,j+=4){const a=d[j]/255+(nz[i]/255-.5)*.75;d[j]=a>.5?255:0;d[j-3]=d[j-2]=d[j-1]=0}
   t.putImageData(id,0,0);return im2}
-function islandCenterPx(L){const [ax,ay]=anchor(L),px=pxPerCm()*L.sizeCm;return[ax+L.icenter[0]*px,ay+L.icenter[1]*px]}
+function islandCenterPx(L){return toW(L,L.icenter[0],L.icenter[1])}
 function irel(L,p){const r=rel(L,p),[cx,cy]=L.icenter;return[cx+(r[0]-cx)/L.iscale,cy+(r[1]-cy)/L.iscale]}
 function anchor(L){return L.mode==='motiv'?[L.x,L.y]:L.mode==='bordure'?[L.ox,L.y]:[L.ox,L.oy]}
-function rel(L,p){const [ax,ay]=anchor(L),px=pxPerCm()*L.sizeCm;return[(p[0]-ax)/px,(p[1]-ay)/px]}
+function toW(L,u,v){const [ax,ay]=anchor(L),px=pxPerCm()*L.sizeCm,a=(L.rot||0)*Math.PI/180,c=Math.cos(a),s=Math.sin(a);return[ax+(u*c-v*s)*px,ay+(u*s+v*c)*px]}
+function rel(L,p){const [ax,ay]=anchor(L),px=pxPerCm()*L.sizeCm,a=-(L.rot||0)*Math.PI/180,c=Math.cos(a),s=Math.sin(a),dx=p[0]-ax,dy=p[1]-ay;return[(dx*c-dy*s)/px,(dx*s+dy*c)/px]}
 cv.addEventListener('pointermove',e=>{if(pts.has(e.pointerId))pts.set(e.pointerId,vpPt(e));
   if(pinch&&pts.size>=2){const i=pinchInfo(),cx=(pinch.m0[0]-pinch.tx0)/pinch.z0,cy=(pinch.m0[1]-pinch.ty0)/pinch.z0;view.z=Math.max(1,Math.min(6,pinch.z0*i.d/pinch.d0));view.tx=i.m[0]-cx*view.z;view.ty=i.m[1]-cy*view.z;applyView();return}
   if(!drag)return;const p=pos(e);
@@ -664,6 +671,7 @@ function syncLayers(){const h=$('#layers');h.innerHTML='';
     b.onclick=()=>{L.mode=k;if(k==='motiv'){L.x=W/2;L.y=H*.4}if(k==='bordure'&&(L.y<0||L.y>H))L.y=H*.5;syncLayers();schedule()};mh.appendChild(b)});
   swatches($('#stSw'),ST_COLORS,L.color,(c,code)=>{L.color=c;L.ncs=code;syncLayers();schedule()},$('#stName'),L.ncs);
   $('#size').value=L.sizeCm;$('#sizeOut').textContent=sizeLabel(L);$('#opac').value=Math.round(L.opacity*100);$('#opacOut').textContent=Math.round(L.opacity*100)+' %';
+  $('#rot').value=L.rot||0;$('#rotOut').textContent=(L.rot||0)+'°';
   press($('#tMetal'),L.metallic);press($('#tRelief'),L.relief);press($('#tSpachtel'),L.spachtel);press($('#tRand'),L.rand);
   press($('#tIsland'),L.island);$('#islandCtl').hidden=!L.island;swatches($('#islSw'),BASE_COLORS.concat([['Ocker','#c9a878'],['Lehm','#b48a63']]),L.islandColor,(c,code)=>{L.islandColor=c;L.islandNcs=code;syncLayers();schedule()},$('#islName'),L.islandNcs);
   const ia=Math.round((L.islandAlpha??1)*100);$('#islA').value=ia;$('#islAOut').textContent=ia+' %';press($('#tGlaze'),!!L.glaze);$('#glazeCtl').hidden=!L.glaze;
@@ -684,6 +692,10 @@ function lightName(a){return['rechts','rechts unten','unten','links unten','link
 $('#afrMove').oninput=e=>{state.base.move=e.target.value/100;$('#afrMoveOut').textContent=e.target.value+' %';schedule()};
 $('#afrGloss').oninput=e=>{state.base.gloss=e.target.value/100;$('#afrGlossOut').textContent=e.target.value+' %';schedule()};
 $('#afrLight').oninput=e=>{state.base.light=+e.target.value;$('#afrLightOut').textContent=lightName(+e.target.value);schedule()};
+function setRot(v){const L=sel();if(!L)return;v=((Math.round(v)+180)%360+360)%360-180;L.rot=v;$('#rot').value=v;$('#rotOut').textContent=v+'°';schedule()}
+$('#rot').oninput=e=>setRot(+e.target.value);
+[['rotL',-90],['rotM',-5],['rotP',5],['rotR',90]].forEach(([id,d])=>$('#'+id).onclick=()=>{const L=sel();if(L)setRot((L.rot||0)+d)});
+$('#rot0').onclick=()=>setRot(0);
 $('#tSpachtel').onclick=()=>{const L=sel();L.spachtel=!L.spachtel;syncLayers();schedule()};
 $('#tRand').onclick=()=>{const L=sel();L.rand=!L.rand;syncLayers();schedule()};
 $('#amount').oninput=e=>{const L=sel();L.amount=e.target.value/100;$('#amountOut').textContent=e.target.value+' %';schedule()};
