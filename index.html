@@ -155,6 +155,7 @@ hr{border:0;border-top:1px solid var(--line);margin:0}
 }
 /* Vollbild */
 .toolsbtn{display:none}
+.toast{position:fixed;z-index:70;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));max-width:min(92vw,520px);background:#1d2124;color:#f1f3f1;border:1px solid #3a4044;border-radius:12px;padding:12px 16px;font-size:14px;line-height:1.4;box-shadow:0 8px 24px rgba(0,0,0,.35)}
 .loupe{position:fixed;z-index:60;width:120px;height:120px;border-radius:50%;border:3px solid #fff;box-shadow:0 4px 18px rgba(0,0,0,.45);pointer-events:none;background:#000}
 body.fs .stage{position:fixed;inset:0;top:0;z-index:30;height:100%;justify-content:center;padding-block:calc(8px + env(safe-area-inset-top,0px)) calc(8px + env(safe-area-inset-bottom,0px))}
 body.fs .brand span,body.fs .brand .logo{display:none}
@@ -210,7 +211,7 @@ body.fs.tools .toolsbtn{right:min(380px,88vw)}
         <div class="lbl">Ausgangsbild</div>
         <div class="seg">
           <button class="chipb" id="useStd" type="button" aria-pressed="true">Standardwand</button>
-          <label class="chipb filelbl" id="useFoto" aria-pressed="false">Eigenes Foto…<input type="file" id="fileIn" accept="image/*"></label>
+          <label class="chipb filelbl" id="useFoto" aria-pressed="false">Eigenes Foto…<input type="file" id="fileIn" accept="image/*,.heic,.heif"></label>
         </div>
         <p class="hint">Die Standardwand ist 4,00 × 2,20 m. Für ein Kundenfoto die Wand möglichst frontal fotografieren.</p>
       </div>
@@ -365,7 +366,7 @@ body.fs.tools .toolsbtn{right:min(380px,88vw)}
     <input type="search" id="pickQ" class="pickq" placeholder="Suchen: Name oder Code, z. B. 5684" autocomplete="off">
     <div class="pickscroll">
       <div class="pats" id="pats"></div>
-      <label class="addb filelbl" style="align-self:flex-start">+ Eigene Schablone (Foto oder Scan)<input type="file" id="stencilIn" accept="image/*"></label>
+      <label class="addb filelbl" style="align-self:flex-start">+ Eigene Schablone (Foto oder Scan)<input type="file" id="stencilIn" accept="image/*,.heic,.heif"></label>
       <p class="hint">Schablone flach auf einen hellen oder dunklen Untergrund legen und von oben fotografieren. Das Tool trennt Motiv und Hintergrund automatisch.</p>
     </div>
   </div>
@@ -398,6 +399,7 @@ body.fs.tools .toolsbtn{right:min(380px,88vw)}
 </div>
 
 <canvas id="loupe" class="loupe" width="240" height="240" hidden aria-hidden="true"></canvas>
+<div class="toast" id="toast" role="status" hidden></div>
 <button class="toolsbtn" id="toolsBtn" type="button" aria-expanded="false">Werkzeuge</button>
 <div class="overlay" id="overlay" hidden>
   <img id="outImg" alt="Visualisierung der Wand">
@@ -861,8 +863,7 @@ function closePicker(){$('#pickSheet').hidden=true}
 $('#curPat').onclick=openPicker;$('#pickQ').addEventListener('input',renderPicker);$('#pickClose').onclick=closePicker;
 $('#pickSheet').addEventListener('click',e=>{if(e.target.id==='pickSheet')closePicker()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#pickSheet').hidden)closePicker()});
-$('#stencilIn').onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{const im=new Image();im.onload=()=>{
-  const k=addCustom(im);let L=sel();if(!L){L=newLayer({});state.layers.push(L);state.sel=L.id}L.pattern=k;closePicker();syncLayers();schedule()};im.src=rd.result};rd.readAsDataURL(f);e.target.value=''};
+$('#stencilIn').onchange=e=>pickImage(e,im=>{const k=addCustom(im);let L=sel();if(!L){L=newLayer({});state.layers.push(L);state.sel=L.id}L.pattern=k;closePicker();syncLayers();schedule()});
 $('#thr').oninput=e=>{const p=PATTERNS[sel().pattern];p.th=+e.target.value;$('#thrOut').textContent=p.th;buildMask(p);schedule()};
 $('#thr').onchange=()=>syncLayers();
 $('#invBtn').onclick=()=>{const p=PATTERNS[sel().pattern];p.light=!p.light;buildMask(p);syncLayers();schedule()};
@@ -875,7 +876,20 @@ function showTab(n){document.querySelector(`.tabs [data-tab="${n}"]`).click()}
 $('#useStd').onclick=()=>{hist.length=0;lastSnapStr='';syncUndo();state.src='std';state.img=null;state.corners=[];state.outline=null;state.holes=[];state.editOut=false;state.ptSel=null;PW=1200;PH=780;W=1200;H=660;state.wallW=null;state.poly=[[0,0],[1200,0],[1200,660],[0,660]];state.wallM=state.wallH*1200/660;state.editWall=false;ensure();resetLayerPos();syncWall();scaleTxt();schedule()};
 function useWallImage(im){const s=Math.min(1,1600/Math.max(im.width,im.height));PW=Math.round(im.width*s);PH=Math.round(im.height*s);const c=mk(PW,PH);c.getContext('2d').drawImage(im,0,0,PW,PH);
   state.img=c;state.src='foto';state.wallReady=false;state.outline=null;state.holes=[];state.editOut=false;state.ptSel=null;hist.length=0;lastSnapStr='';syncUndo();state.wallW=null;state.poly=[[PW*.3,PH*.25],[PW*.7,PH*.25],[PW*.7,PH*.75],[PW*.3,PH*.75]];state.editWall=true;state.shade=.85;W=1200;H=Math.max(200,Math.min(3200,Math.round(1200*wallAspect())));state.wallM=state.wallH*1200/H;ensure();detectCorners();showTab('wand');resetLayerPos();syncWall();scaleTxt();schedule();return c}
-$('#fileIn').onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{const im=new Image();im.onload=()=>{const c=useWallImage(im);cloudSave(c)};im.src=rd.result};rd.readAsDataURL(f);e.target.value=''};
+function toast(msg,ms){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toast._t);if(ms)toast._t=setTimeout(()=>t.hidden=true,ms)}
+let heicLib=null;function loadHeic(){if(heicLib)return heicLib;heicLib=new Promise((res,rej)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js';sc.onload=()=>window.heic2any?res(window.heic2any):rej(new Error('lib'));sc.onerror=()=>{heicLib=null;rej(new Error('net'))};document.head.appendChild(sc)});return heicLib}
+function imgFromBlob(b){return new Promise((res,rej)=>{const u=URL.createObjectURL(b),im=new Image();im.onload=()=>res(im);im.onerror=()=>{URL.revokeObjectURL(u);rej(new Error('decode'))};im.src=u})}
+async function loadImageFile(f){const isHeic=/hei[cf]$/i.test(f.type||'')||/\.hei[cf]$/i.test(f.name||'');
+  if(!isHeic){try{return await imgFromBlob(f)}catch(_){}}
+  toast('iPhone-Foto (HEIC) wird umgewandelt …');
+  try{const h=await loadHeic();let out=await h({blob:f,toType:'image/jpeg',quality:.9});if(Array.isArray(out))out=out[0];const im=await imgFromBlob(out);toast('Foto geladen.',1500);return im}
+  catch(e){throw new Error(e&&e.message==='net'?'net':'decode')}}
+async function pickImage(e,use){const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;
+  if(!f.size){toast('Das Foto ist noch nicht auf diesem Gerät. In OneDrive das Foto zuerst öffnen oder „Immer auf diesem Gerät behalten“ wählen, dann nochmal versuchen.',8000);return}
+  toast('Foto wird geladen …');
+  try{const im=await loadImageFile(f);use(im);if(!$('#toast').textContent.startsWith('Foto geladen'))$('#toast').hidden=true}
+  catch(err){toast(err.message==='net'?'Das iPhone-Format (HEIC) braucht zum Umwandeln Internet. Bitte mit Internet nochmal versuchen oder das Foto als JPG speichern.':'Dieses Foto kann nicht gelesen werden. Am iPhone unter Einstellungen → Kamera → Formate „Maximale Kompatibilität“ wählen, dann werden Fotos als JPG gespeichert.',9000)}}
+$('#fileIn').onchange=e=>pickImage(e,im=>{const c=useWallImage(im);cloudSave(c)});
 
 function cloudSave(){}
 
