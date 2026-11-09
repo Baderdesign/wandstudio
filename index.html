@@ -201,12 +201,12 @@ body.fs.tools .toolsbtn{right:min(380px,88vw)}
 
   <section class="panel">
     <div class="tabs" role="tablist">
-      <button role="tab" id="t-wand" data-tab="wand" aria-selected="false">Wand</button>
+      <button role="tab" id="t-wand" data-tab="wand" aria-selected="true">Wand</button>
       <button role="tab" id="t-grund" data-tab="grund" aria-selected="false">Grundton</button>
-      <button role="tab" id="t-schab" data-tab="schab" aria-selected="true">Schablonen</button>
+      <button role="tab" id="t-schab" data-tab="schab" aria-selected="false">Schablonen</button>
     </div>
 
-    <div class="pane" data-pane="wand" hidden>
+    <div class="pane" data-pane="wand">
       <div class="field">
         <div class="lbl">Ausgangsbild</div>
         <div class="seg">
@@ -266,7 +266,7 @@ body.fs.tools .toolsbtn{right:min(380px,88vw)}
       </div>
     </div>
 
-    <div class="pane" data-pane="schab">
+    <div class="pane" data-pane="schab" hidden>
       <div class="field">
         <div class="lbl">Ebenen</div>
         <div class="layers" id="layers"></div>
@@ -721,10 +721,10 @@ function rel(L,p){const [ax,ay]=anchor(L),px=pxPerCm()*L.sizeCm,a=-(L.rot||0)*Ma
 cv.addEventListener('pointermove',e=>{if(drag&&(drag.type==='h'||drag.type==='op')&&e.pointerType!=='mouse')requestAnimationFrame(()=>requestAnimationFrame(()=>showLoupe(e)));if(pts.has(e.pointerId))pts.set(e.pointerId,vpPt(e));
   if(pinch&&pts.size>=2){const i=pinchInfo(),cx=(pinch.m0[0]-pinch.tx0)/pinch.z0,cy=(pinch.m0[1]-pinch.ty0)/pinch.z0;view.z=Math.max(1,Math.min(6,pinch.z0*i.d/pinch.d0));view.tx=i.m[0]-cx*view.z;view.ty=i.m[1]-cy*view.z;applyView();return}
   if(!drag)return;const ps=pos(e),p=(drag.type==='h'||drag.type==='op')?ps:toFlat(ps);
-  if(drag.type==='op'){const [g,i]=state.ptSel,pts=g<0?state.outline:state.holes[g],[q,sn]=snapPt(p);state.snapped=sn;pts[i]=[Math.max(0,Math.min(PW,q[0])),Math.max(0,Math.min(PH,q[1]))];schedule();return}
+  if(drag.type==='op'){const [g,i]=state.ptSel,pts=g<0?state.outline:state.holes[g],[q,sn]=snapPt(p,pts[i]);state.snapped=sn;pts[i]=[Math.max(0,Math.min(PW,q[0])),Math.max(0,Math.min(PH,q[1]))];schedule();return}
   if(drag.type==='pull'){drag.stroke.pts[1]=irel(sel(),p);state.lastPt=ps;state.cursor=true;schedule();return}
   if(drag.type==='b'){drag.stroke.pts.push(drag.isl?irel(sel(),p):rel(sel(),p));state.lastPt=ps;schedule();return}
-  if(drag.type==='h'){{const [q,sn]=snapPt(p);state.snapped=sn;state.poly[drag.i]=[Math.max(0,Math.min(PW,q[0])),Math.max(0,Math.min(PH,q[1]))]};homo=computeHomo()}
+  if(drag.type==='h'){{const [q,sn]=snapPt(p,state.poly[drag.i]);state.snapped=sn;state.poly[drag.i]=[Math.max(0,Math.min(PW,q[0])),Math.max(0,Math.min(PH,q[1]))]};homo=computeHomo()}
   else{const L=sel(),dx=p[0]-drag.last[0],dy=p[1]-drag.last[1];drag.last=p;
     if(L.mode==='flaeche'){L.ox+=dx;L.oy+=dy}else if(L.mode==='bordure'){L.ox+=dx;L.y+=dy}else{L.x+=dx;L.y+=dy}}
   schedule()});
@@ -740,7 +740,9 @@ function detectCorners(){state.corners=[];if(state.src!=='foto'||!state.img)retu
   const A=box(xx),B=box(yy),C=box(xy),Rm=new Float32Array(w*h);let mx=0;for(let i=0;i<Rm.length;i++){const v=A[i]*B[i]-C[i]*C[i]-.05*(A[i]+B[i])**2;Rm[i]=v;if(v>mx)mx=v}
   const th=mx*.01,pts=[],N=5;for(let y=N;y<h-N;y++)for(let x=N;x<w-N;x++){const v=Rm[y*w+x];if(v<th)continue;let ok=true;for(let dy=-N;dy<=N&&ok;dy++)for(let dx=-N;dx<=N;dx++){if(Rm[(y+dy)*w+x+dx]>v){ok=false;break}}if(ok)pts.push([x/sc,y/sc,v])}
   pts.sort((a,b)=>b[2]-a[2]);state.corners=pts.slice(0,300)}
-function snapPt(p){const cs=state.corners;if(!cs||!cs.length||!state.snapOn)return[p,false];const r=cv.getBoundingClientRect(),R=26*PW/r.width;let best=null,bd=R;for(const c of cs){const d=Math.hypot(c[0]-p[0],c[1]-p[1]);if(d<bd){bd=d;best=c}}return best?[[best[0],best[1]],true]:[p,false]}
+function snapPt(p,self){const cs=state.corners;if(!cs||!cs.length||!state.snapOn)return[p,false];const r=cv.getBoundingClientRect(),R=14*PW/r.width,eps=2*PW/r.width;
+  const others=[];if(state.editOut){[state.outline||[]].concat(state.holes||[]).forEach(a=>a.forEach(q=>{if(q!==self)others.push(q)}))}else state.poly.forEach(q=>{if(q!==self)others.push(q)});
+  let best=null,bd=R;for(const c of cs){const d=Math.hypot(c[0]-p[0],c[1]-p[1]);if(d<bd&&!others.some(o=>Math.hypot(o[0]-c[0],o[1]-c[1])<eps)){bd=d;best=c}}return best?[[best[0],best[1]],true]:[p,false]}
 function hideLoupe(){const lp=$('#loupe');if(lp)lp.hidden=true}
 const endDrag=e=>{hideLoupe();state.snapped=false;pts.delete(e.pointerId);if(drag&&drag.type==='pull'){state.cursor=false;schedule()}if(pinch){if(pts.size<2)pinch=null;return}if(drag&&drag.type==='h'){refitFlat();scaleTxt();schedule()}drag=null};
 cv.addEventListener('pointerdown',e=>{if(drag&&(drag.type==='h'||drag.type==='op')&&e.pointerType!=='mouse'){requestAnimationFrame(()=>requestAnimationFrame(()=>showLoupe(e)))}});
