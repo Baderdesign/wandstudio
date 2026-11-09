@@ -214,6 +214,15 @@ hr{border:0;border-top:1px solid var(--line);margin:0}
         <div class="lbl">Farbton <output id="baseName"></output></div>
         <div class="swatches" id="baseSw"></div>
       </div>
+      <div class="field" id="afrCtl" hidden>
+        <p class="hint">Africa ist eine Metallic-Spachteltechnik. Mit „Bewegung“ stellst du ein, wie stark die Kellenschläge sichtbar sind, mit „Glanz“ den Metallic-Schimmer und das Glitzern, mit „Licht“ die Richtung, aus der das Licht kommt.</p>
+        <label class="lbl" for="afrMove">Bewegung <output id="afrMoveOut"></output></label>
+        <input type="range" id="afrMove" min="0" max="100" value="60">
+        <label class="lbl" for="afrGloss">Glanz <output id="afrGlossOut"></output></label>
+        <input type="range" id="afrGloss" min="0" max="100" value="60">
+        <label class="lbl" for="afrLight">Licht von <output id="afrLightOut"></output></label>
+        <input type="range" id="afrLight" min="0" max="359" value="315">
+      </div>
     </div>
 
     <div class="pane" data-pane="schab">
@@ -358,9 +367,9 @@ function rng(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t
 const cv=$('#cv'),ctx=cv.getContext('2d');
 let W=1200,H=780;
 
-const BASE_COLORS=[['Kalkweiss','#f0eee8'],['Sand','#d8c6a6'],['Taupe','#a6978a'],['Salbei','#9dac96'],['Petrol','#3f6b70'],['Nachtblau','#2c3a52'],['Ochsenblut','#7a302c'],['Anthrazit','#3b3e41']];
+const BASE_COLORS=[['Kalkweiss','#f0eee8'],['Sand','#d8c6a6'],['Taupe','#a6978a'],['Salbei','#9dac96'],['Petrol','#3f6b70'],['Nachtblau','#2c3a52'],['Ochsenblut','#7a302c'],['Anthrazit','#3b3e41'],['Kupfer','#9c6545'],['Champagner','#c8b596'],['Bronze','#8f7d52']];
 const ST_COLORS=[['Gold','#c9a24a'],['Silber','#b8bcc1'],['Kupfer','#b46a3c'],['Weiss','#f5f3ee'],['Anthrazit','#2f3235'],['Petrol','#2f5d62']];
-const EFFECTS=[['glatt','Glatt'],['kalk','Kalkputz'],['marmorino','Marmorino'],['metallic','Metallic'],['beton','Beton-Optik']];
+const EFFECTS=[['glatt','Glatt'],['kalk','Kalkputz'],['marmorino','Marmorino'],['metallic','Metallic'],['beton','Beton-Optik'],['africa','Africa (Novacolor)']];
 const MODES=[['flaeche','Ganze Fläche'],['bordure','Bordüre'],['motiv','Einzelmotiv']];
 
 const state={
@@ -441,7 +450,18 @@ function getTex(effect){const k=effect+W+'x'+H;if(texCache.has(k))return texCach
     t.globalAlpha=.35;t.drawImage(fractal(W,H,[[3,1],[1,.6]],31),0,0);t.globalAlpha=1}
   else if(effect==='beton'){c=fractal(W,H,[[70,1],[18,.6],[4,.45],[1,.35]],41);const t=c.getContext('2d');const r=rng(9);const n=Math.round(W*H/1600);
     for(let i=0;i<n;i++){t.fillStyle=`rgba(30,30,30,${.3+r()*.4})`;t.beginPath();t.arc(r()*W,r()*H,.6+r()*1.8,0,7);t.fill()}}
+  else if(effect==='africa'){c=fractal(W,H,[[300,1],[110,.6],[30,.2]],57);passes=1}
   const res=c?{c,passes}:null;texCache.set(k,res);return res}
+function getAfrica(){const k='afr'+W+'x'+H;if(texCache.has(k))return texCache.get(k);const sc=Math.max(W,H)/1200,r=rng(77);
+  const st=mk(W,H),t=st.getContext('2d');t.fillStyle='#808080';t.fillRect(0,0,W,H);t.lineCap='round';
+  const n=Math.round(W*H/1500);
+  for(let i=0;i<n;i++){const x=r()*W,y=r()*H,rad=(40+r()*150)*sc,a0=r()*Math.PI*2,len=.4+r()*1.1,light=r()<.62;
+    t.strokeStyle=light?`rgba(255,255,255,${.04+r()*.12})`:`rgba(0,0,0,${.03+r()*.09})`;t.lineWidth=(8+r()*34)*sc;
+    t.beginPath();t.arc(x,y,rad,a0,a0+len);t.stroke();
+    for(let j=1;j<4&&r()<.7;j++){t.lineWidth*=.45;t.beginPath();t.arc(x,y,rad*(1-j*.09),a0+.05*j,a0+len*(1-.15*j));t.stroke()}}
+  const sp=mk(W,H),pt=sp.getContext('2d'),id=pt.createImageData(W,H),d=id.data;
+  for(let i=0;i<d.length;i+=4){const q=r();if(q<.06){const v=q<.012?255:170+r()*70;d[i]=d[i+1]=d[i+2]=v;d[i+3]=q<.012?230:60+r()*90}}
+  pt.putImageData(id,0,0);const res={strokes:st,sparkle:sp};texCache.set(k,res);return res}
 
 /* ---------- Standardwand ---------- */
 function rr(t,x,y,w,h,r){t.beginPath();t.moveTo(x+r,y);t.arcTo(x+w,y,x+w,y+h,r);t.arcTo(x+w,y+h,x,y+h,r);t.arcTo(x,y+h,x,y,r);t.arcTo(x,y,x+w,y,r);t.closePath()}
@@ -517,7 +537,13 @@ function render(){
   if(!state.before){
     const w=wl.getContext('2d');w.globalCompositeOperation='source-over';w.globalAlpha=1;w.clearRect(0,0,W,H);
     if(state.base.on){w.fillStyle=state.base.color;w.fillRect(0,0,W,H);const tx=getTex(state.base.effect);
-      if(tx){w.globalCompositeOperation='soft-light';for(let i=0;i<tx.passes;i++)w.drawImage(tx.c,0,0);w.globalCompositeOperation='source-over'}}
+      if(tx){w.globalCompositeOperation='soft-light';for(let i=0;i<tx.passes;i++)w.drawImage(tx.c,0,0);w.globalCompositeOperation='source-over'}
+      if(state.base.effect==='africa'){const af=getAfrica(),mv=state.base.move??.6,gl=state.base.gloss??.6;
+        w.globalCompositeOperation='soft-light';w.globalAlpha=Math.min(1,mv*1.4);w.drawImage(af.strokes,0,0);if(mv>.7){w.globalAlpha=(mv-.7)*2.5;w.drawImage(af.strokes,0,0)}
+        const ang=(state.base.light??315)*Math.PI/180,cx=W/2+Math.cos(ang)*W*.6,cy=H/2+Math.sin(ang)*H*.6,g=w.createRadialGradient(cx,cy,0,cx,cy,Math.max(W,H)*1.1);
+        g.addColorStop(0,'rgba(255,255,255,.9)');g.addColorStop(.55,'rgba(128,128,128,0)');g.addColorStop(1,'rgba(0,0,0,.6)');
+        w.globalCompositeOperation='overlay';w.globalAlpha=gl*.55;w.fillStyle=g;w.fillRect(0,0,W,H);
+        w.globalCompositeOperation='screen';w.globalAlpha=gl*.8;w.drawImage(af.sparkle,0,0);w.globalAlpha=1;w.globalCompositeOperation='source-over'}}
     state.layers.filter(L=>!L.island).forEach(L=>drawLayer(w,L));
     const isl=state.layers.filter(L=>L.island&&L.istrokes.length);
     if(isl.length){const gt=gi.getContext('2d');gt.globalCompositeOperation='source-over';gt.globalAlpha=1;gt.clearRect(0,0,W,H);
@@ -616,6 +642,8 @@ function syncWall(){press($('#useStd'),state.src==='std');press($('#useFoto'),st
   cv.classList.toggle('edit',state.editWall);$('#wallM').value=state.wallM;$('#shade').value=Math.round(state.shade*100);$('#shadeOut').textContent=Math.round(state.shade*100)+' %'}
 function syncBase(){press($('#baseOn'),state.base.on);
   const eh=$('#effects');eh.innerHTML='';EFFECTS.forEach(([k,n])=>{const b=document.createElement('button');b.type='button';b.className='chipb';b.textContent=n;press(b,state.base.effect===k);b.onclick=()=>{state.base.effect=k;state.base.on=true;syncBase();schedule()};eh.appendChild(b)});
+  const af=state.base.effect==='africa';$('#afrCtl').hidden=!af;if(af){const mv=Math.round((state.base.move??.6)*100),gl=Math.round((state.base.gloss??.6)*100),li=Math.round(state.base.light??315);
+    $('#afrMove').value=mv;$('#afrMoveOut').textContent=mv+' %';$('#afrGloss').value=gl;$('#afrGlossOut').textContent=gl+' %';$('#afrLight').value=li;$('#afrLightOut').textContent=lightName(li)}
   swatches($('#baseSw'),BASE_COLORS,state.base.color,(c,code)=>{state.base.color=c;state.base.ncs=code;state.base.on=true;syncBase();schedule()},$('#baseName'),state.base.ncs)}
 function delLayer(id){state.layers=state.layers.filter(l=>l.id!==id);if(state.sel===id)state.sel=state.layers.length?state.layers[state.layers.length-1].id:null;syncLayers();schedule()}
 function sizeLabel(L){const p=PATTERNS[L.pattern];if(p&&p.mask&&p.w!==p.h)return Math.round(L.sizeCm*p.w/p.h)+' × '+L.sizeCm+' cm';return L.sizeCm+' cm'}
@@ -652,6 +680,10 @@ $('#glzSeed').onclick=()=>{const L=sel();L.glazeSeed=(Math.random()*1e6)|0;sched
 $('#tIsland').onclick=()=>{const L=sel();L.island=!L.island;if(L.island){if(!L.istrokes.length){const tl=getTile(L.pattern,L.color,L.mode==='motiv'),px=pxPerCm()*L.sizeCm,tw=tl.width*px/tl.height;
     const cxy=L.mode==='motiv'?[L.x,L.y]:[W/2,H*.4],c=rel(L,cxy),r=Math.min(tw,px)*.28/px;L.icenter=c;L.iscale=1;
     L.istrokes=[{t:'iadd',w:r*1.1,pts:[[c[0]-r*.45,c[1]-r*.3],[c[0]+r*.35,c[1]-r*.4],[c[0]+r*.5,c[1]+r*.25],[c[0]-r*.15,c[1]+r*.45],[c[0]-r*.45,c[1]-r*.3]]}]}state.tool='iscale';if(state.brushCm<20)state.brushCm=20}syncLayers();schedule()};
+function lightName(a){return['rechts','rechts unten','unten','links unten','links','links oben','oben','rechts oben'][Math.round(((a%360)+360)%360/45)%8]}
+$('#afrMove').oninput=e=>{state.base.move=e.target.value/100;$('#afrMoveOut').textContent=e.target.value+' %';schedule()};
+$('#afrGloss').oninput=e=>{state.base.gloss=e.target.value/100;$('#afrGlossOut').textContent=e.target.value+' %';schedule()};
+$('#afrLight').oninput=e=>{state.base.light=+e.target.value;$('#afrLightOut').textContent=lightName(+e.target.value);schedule()};
 $('#tSpachtel').onclick=()=>{const L=sel();L.spachtel=!L.spachtel;syncLayers();schedule()};
 $('#tRand').onclick=()=>{const L=sel();L.rand=!L.rand;syncLayers();schedule()};
 $('#amount').oninput=e=>{const L=sel();L.amount=e.target.value/100;$('#amountOut').textContent=e.target.value+' %';schedule()};
