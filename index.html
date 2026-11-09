@@ -151,6 +151,28 @@ hr{border:0;border-top:1px solid var(--line);margin:0}
   .panel{overflow:auto;height:100%}
   html,body{height:100%}
 }
+/* Vollbild */
+.toolsbtn{display:none}
+body.fs .stage{position:fixed;inset:0;top:0;z-index:30;height:100%;justify-content:center;padding-block:calc(8px + env(safe-area-inset-top,0px)) calc(8px + env(safe-area-inset-bottom,0px))}
+body.fs .brand span,body.fs .brand .logo{display:none}
+body.fs .stage canvas{max-height:none;max-width:none}
+body.fs .stage{padding:0;align-items:center;justify-content:center;background:#111314}
+body.fs .viewport{position:fixed;inset:0;width:auto;max-width:none;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:0;box-shadow:none;z-index:31}
+body.fs .stage canvas{flex:0 0 auto;margin:0}
+body.fs .brand{display:none}
+body.fs .stagebar{position:fixed;z-index:32;top:calc(8px + env(safe-area-inset-top,0px));right:max(8px,env(safe-area-inset-right,0px));left:auto;justify-content:flex-end;pointer-events:none}
+body.fs .stagebar>*{pointer-events:auto}
+body.fs .sbtn{background:rgba(24,26,28,.62);border-color:rgba(255,255,255,.18);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+body.fs .zoombar{position:fixed;z-index:32;bottom:calc(8px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:rgba(24,26,28,.62);border-radius:999px;padding:4px 8px;flex-wrap:nowrap;white-space:nowrap;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+body.fs .brushbar{position:fixed;z-index:32;bottom:calc(58px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);width:min(420px,80vw);background:rgba(24,26,28,.62);border-radius:999px;padding:6px 14px}
+@media (max-height:560px){body.fs .stagebar{top:calc(4px + env(safe-area-inset-top,0px))}body.fs .zoombar{bottom:calc(4px + env(safe-area-inset-bottom,0px))}body.fs .toolsbtn{padding:10px 7px;font-size:11px}body.fs .sbtn{padding:5px 10px;font-size:12px}body.fs .zoombar .sbtn{padding:3px 10px}body.fs .scale{font-size:11px}}
+body.fs .panel{position:fixed;top:0;right:0;bottom:0;width:min(380px,88vw);height:auto;z-index:35;overflow:auto;transform:translateX(105%);transition:transform .25s ease;box-shadow:-12px 0 30px rgba(0,0,0,.35);
+  padding-top:calc(14px + env(safe-area-inset-top,0px));padding-bottom:calc(32px + env(safe-area-inset-bottom,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+body.fs.tools .panel{transform:none}
+body.fs .toolsbtn{display:flex;align-items:center;gap:6px;position:fixed;z-index:36;top:50%;right:env(safe-area-inset-right,0px);transform:translateY(-50%);font:inherit;font-weight:700;font-size:13px;font-stretch:85%;letter-spacing:.04em;text-transform:uppercase;
+  border:0;border-radius:10px 0 0 10px;background:var(--accent);color:var(--accent-fg);padding:14px 10px;cursor:pointer;writing-mode:vertical-rl;box-shadow:-4px 0 14px rgba(0,0,0,.3);transition:right .25s ease}
+body.fs.tools .toolsbtn{right:min(380px,88vw)}
+.toolsbtn:focus-visible{outline:2px solid #fff;outline-offset:2px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
@@ -163,6 +185,8 @@ hr{border:0;border-top:1px solid var(--line);margin:0}
       <div class="stagebtns">
         <button class="sbtn" id="beforeBtn" type="button">Vorher halten</button>
         <button class="sbtn" id="saveBtn" type="button">Bild speichern</button>
+        <button class="sbtn" id="fitBtn" type="button" hidden>Bildschirm füllen</button>
+        <button class="sbtn" id="fsBtn" type="button">⛶ Vollbild</button>
       </div>
     </div>
     <div class="viewport" id="vp"><canvas id="cv" width="1200" height="780" aria-label="Wandvorschau"></canvas></div>
@@ -366,6 +390,7 @@ hr{border:0;border-top:1px solid var(--line);margin:0}
   </div>
 </div>
 
+<button class="toolsbtn" id="toolsBtn" type="button" aria-expanded="false">Werkzeuge</button>
 <div class="overlay" id="overlay" hidden>
   <img id="outImg" alt="Visualisierung der Wand">
   <p>Bild lange drücken (Handy) oder Rechtsklick → „Bild speichern“.</p>
@@ -502,7 +527,7 @@ function drawBg(t){if(state.src==='std')drawStd(t);else t.drawImage(state.img,0,
 
 /* ---------- Hilfscanvases ---------- */
 let wl,lc,sh,ec,er,ic,im2,gi,gp,shadeMap=null;const maskPool=[];const noiseCache=new Map();
-function ensure(){if(typeof resetView==='function')try{resetView()}catch(_){}er=mk(W,H);ic=mk(W,H);im2=mk(W,H);gi=mk(W,H);gp=mk(W,H);maskPool.length=0;noiseCache.clear();wl=mk(W,H);lc=mk(W,H);sh=mk(W,H);ec=mk(W,H);cv.width=PW;cv.height=PH;shadeMap=null;homo=computeHomo();coverCache.clear()}
+function ensure(){setTimeout(()=>{try{fitCanvas()}catch(_){}},0);if(typeof resetView==='function')try{resetView()}catch(_){}er=mk(W,H);ic=mk(W,H);im2=mk(W,H);gi=mk(W,H);gp=mk(W,H);maskPool.length=0;noiseCache.clear();wl=mk(W,H);lc=mk(W,H);sh=mk(W,H);ec=mk(W,H);cv.width=PW;cv.height=PH;shadeMap=null;homo=computeHomo();coverCache.clear()}
 const coverCache=new Map();
 function spachtelMask(L){const k=L.seed+'|'+L.amount;if(coverCache.has(k))return coverCache.get(k);if(coverCache.size>8)coverCache.clear();
   const f=fractal(W,H,[[30,1],[10,.55],[3,.35],[1,.25]],L.seed),t=f.getContext('2d'),id=t.getImageData(0,0,W,H),d=id.data;
@@ -621,7 +646,7 @@ let raf=0;function schedule(){if(!raf)raf=requestAnimationFrame(()=>{raf=0;rende
 /* ---------- Zeiger ---------- */
 let drag=null;
 const vp=$('#vp'),pts=new Map();let pinch=null;const view={z:1,tx:0,ty:0};
-function applyView(){const w=vp.clientWidth,h=vp.clientHeight;view.z=Math.max(1,Math.min(6,view.z));
+function applyView(){const w=cv.offsetWidth||vp.clientWidth,h=cv.offsetHeight||vp.clientHeight;view.z=Math.max(1,Math.min(6,view.z));
   view.tx=Math.min(0,Math.max(w-w*view.z,view.tx));view.ty=Math.min(0,Math.max(h-h*view.z,view.ty));
   cv.style.transform=view.z===1?'':`translate(${view.tx}px,${view.ty}px) scale(${view.z})`;$('#zReset').hidden=view.z===1}
 function zoomAt(nz,mx,my){const cx=(mx-view.tx)/view.z,cy=(my-view.ty)/view.z;view.z=Math.max(1,Math.min(6,nz));view.tx=mx-cx*view.z;view.ty=my-cy*view.z;applyView()}
@@ -837,6 +862,17 @@ bb.addEventListener('pointerdown',e=>{e.preventDefault();setBefore(true)});['poi
 bb.addEventListener('keydown',e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();setBefore(true)}});bb.addEventListener('keyup',()=>setBefore(false));
 
 $('#saveBtn').onclick=()=>{const ew=state.editWall;state.editWall=false;render();$('#outImg').src=cv.toDataURL('image/jpeg',.92);state.editWall=ew;render();$('#overlay').hidden=false};
+let fsFill=false;
+function fitCanvas(){if(!document.body.classList.contains('fs')){cv.style.width='';cv.style.height='';return}
+  const aw=window.innerWidth,ah=window.innerHeight,k=Math.max(.05,fsFill?Math.max(aw/PW,ah/PH):Math.min(aw/PW,ah/PH));cv.style.width=Math.floor(PW*k)+'px';cv.style.height=Math.floor(PH*k)+'px'}
+window.addEventListener('resize',()=>{fitCanvas()});window.addEventListener('orientationchange',()=>setTimeout(fitCanvas,250));
+function setFS(on){document.body.classList.toggle('fs',on);$('#fitBtn').hidden=!on;fsFill=false;$('#fitBtn').textContent='Bildschirm füllen';try{resetView()}catch(_){}document.body.classList.toggle('tools',false);$('#fsBtn').textContent=on?'✕ Vollbild beenden':'⛶ Vollbild';$('#toolsBtn').setAttribute('aria-expanded','false');$('#toolsBtn').textContent='Werkzeuge';
+  try{if(on&&document.documentElement.requestFullscreen&&!document.fullscreenElement)document.documentElement.requestFullscreen().catch(()=>{});if(!on&&document.fullscreenElement)document.exitFullscreen().catch(()=>{})}catch(_){}
+  fitCanvas();setTimeout(()=>{fitCanvas();try{applyView()}catch(_){}},80);setTimeout(fitCanvas,400)}
+$('#fsBtn').onclick=()=>setFS(!document.body.classList.contains('fs'));
+$('#fitBtn').onclick=()=>{fsFill=!fsFill;$('#fitBtn').textContent=fsFill?'Ganze Wand zeigen':'Bildschirm füllen';try{resetView()}catch(_){}fitCanvas()};
+$('#toolsBtn').onclick=()=>{const o=!document.body.classList.contains('tools');document.body.classList.toggle('tools',o);$('#toolsBtn').setAttribute('aria-expanded',String(o));$('#toolsBtn').textContent=o?'Schliessen':'Werkzeuge'};
+document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement&&document.body.classList.contains('fs'))setFS(false)});
 $('#closeOv').onclick=()=>{$('#overlay').hidden=true};
 
 /* ---------- Start: Beispiel ---------- */
