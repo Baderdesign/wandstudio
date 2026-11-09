@@ -47,6 +47,9 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .donebtn{background:#2e7d4f!important;border-color:#2e7d4f!important;color:#fff!important}
 .donechip{background:var(--accent);border-color:var(--accent);color:var(--accent-fg);font-weight:700;align-self:flex-start}
 .chipb:disabled{opacity:.45;cursor:default}
+.histbtn{background:#e9ebe8!important;color:#1d2124!important;border-color:#e9ebe8!important;font-weight:700}
+.histbtn b{font-size:20px;line-height:1;vertical-align:-2px}
+.histbtn:disabled{background:#363a3d!important;color:#8a9296!important;border-color:#4a5053!important;opacity:1!important}
 .sbtn:disabled{opacity:.4;cursor:default}
 .brushbar{display:flex;align-items:center;gap:10px;color:#e9ebe8;font-size:13px;font-weight:600;font-stretch:85%;max-width:520px;width:100%;margin:0 auto}
 .brushbar input{flex:1;min-width:0;accent-color:#e9ebe8}
@@ -195,7 +198,7 @@ body.fs.tools .toolsbtn{right:min(380px,88vw)}
       </div>
     </div>
     <div class="viewport" id="vp"><canvas id="cv" width="1200" height="780" aria-label="Wandvorschau"></canvas></div>
-    <div class="zoombar"><button class="sbtn" id="zOut" type="button" aria-label="Verkleinern">−</button><span class="scale" id="scaleTxt"></span><button class="sbtn" id="zIn" type="button" aria-label="Vergrössern">+</button><button class="sbtn" id="zReset" type="button">Ganze Wand</button><button class="sbtn" id="undoBtn" type="button" disabled>↶ Schritt zurück</button></div>
+    <div class="zoombar"><button class="sbtn" id="zOut" type="button" aria-label="Verkleinern">−</button><span class="scale" id="scaleTxt"></span><button class="sbtn" id="zIn" type="button" aria-label="Vergrössern">+</button><button class="sbtn" id="zReset" type="button">Ganze Wand</button><button class="sbtn histbtn" id="undoBtn" type="button" disabled aria-label="Schritt zurück"><b>↶</b> Zurück</button><button class="sbtn histbtn" id="redoBtn" type="button" disabled aria-label="Schritt vor">Vor <b>↷</b></button></div>
     <div class="brushbar" id="brushBar" hidden><label for="brushSz2">Pinsel</label><input type="range" id="brushSz2" min="1" max="60" value="12"><output id="brushOut2"></output></div>
   </section>
 
@@ -432,12 +435,15 @@ function newLayer(o){return Object.assign({id:nextId++,pattern:null,mode:'flaech
   spachtel:false,rand:false,amount:.6,seed:(Math.random()*1e6)|0,strokes:[],island:false,islandColor:'#d3c2a4',islandNcs:null,islandAlpha:1,glaze:false,glazeColor:'#8a5a3c',glazeNcs:null,glazeAlpha:.45,glazeCloud:.5,istrokes:[],icenter:[0,0],iscale:1},o)}
 state.tool='move';state.brushCm=12;
 let eraseN=0;const hist=[];let lastHistKey='',lastHistT=0,lastSnapStr='';
-function snap(){return{base:{...state.base},layers:state.layers.map(l=>({...l})),sel:state.sel,wallM:state.wallM,wallH:state.wallH,wallW:state.wallW,shade:state.shade,poly:state.poly.map(p=>p.slice()),outline:state.outline?state.outline.map(p=>p.slice()):null,holes:(state.holes||[]).map(h=>h.map(p=>p.slice()))}}
+function snap(){return{base:{...state.base},layers:state.layers.map(l=>({...l})),sel:state.sel,wallM:state.wallM,wallH:state.wallH,wallW:state.wallW,shade:state.shade,poly:state.poly.map(p=>p.slice()),outline:state.outline?state.outline.map(p=>p.slice()):null,holes:(state.holes||[]).map(h=>h.map(p=>p.slice())),wallReady:!!state.wallReady,editWall:!!state.editWall,editOut:!!state.editOut}}
 function snapStr(o){return JSON.stringify(o,(k,v)=>k==='erase'?(v?v._id:null):v)}
 function pushHist(force,key){const now=Date.now();if(!force&&key&&key===lastHistKey&&now-lastHistT<1500){lastHistT=now;return}lastHistKey=key||'';lastHistT=now;
-  const o=snap(),str=snapStr(o);if(!force&&hist.length&&str===lastSnapStr)return;hist.push(o);lastSnapStr=str;if(hist.length>40)hist.shift();syncUndo()}
-function syncUndo(){const b=document.getElementById('undoBtn');if(b)b.disabled=!hist.length}
-function undo(){const o=hist.pop();if(!o)return;Object.assign(state.base,o.base);state.layers=o.layers;state.layers.forEach(l=>{if(!PATTERNS[l.pattern])l.pattern=firstPat()});state.sel=o.sel;state.wallM=o.wallM;state.wallH=o.wallH||2.45;state.wallW=o.wallW||null;state.shade=o.shade;state.poly=o.poly;state.outline=o.outline;state.holes=o.holes||[];state.ptSel=null;homo=computeHomo();
+  const o=snap(),str=snapStr(o);if(!force&&hist.length&&str===lastSnapStr)return;hist.push(o);future.length=0;lastSnapStr=str;if(hist.length>40)hist.shift();syncUndo()}
+const future=[];
+function syncUndo(){const b=document.getElementById('undoBtn');if(b)b.disabled=!hist.length;const r=document.getElementById('redoBtn');if(r)r.disabled=!future.length}
+function undo(){const o=hist.pop();if(!o)return;future.push(snap());restoreSnap(o)}
+function redo(){const o=future.pop();if(!o)return;hist.push(snap());restoreSnap(o)}
+function restoreSnap(o){Object.assign(state.base,o.base);state.layers=o.layers;state.layers.forEach(l=>{if(!PATTERNS[l.pattern])l.pattern=firstPat()});state.sel=o.sel;state.wallM=o.wallM;state.wallH=o.wallH||2.45;state.wallW=o.wallW||null;state.shade=o.shade;state.poly=o.poly;state.outline=o.outline;state.holes=o.holes||[];state.ptSel=null;if('wallReady' in o){state.wallReady=o.wallReady;state.editWall=o.editWall;state.editOut=o.editOut}homo=computeHomo();try{refitFlat()}catch(_){}
   lastSnapStr=hist.length?snapStr(hist[hist.length-1]):'';lastHistKey='';shadeMap=null;syncWall();syncBase();syncLayers();scaleTxt();syncUndo();schedule()}
 
 /* ---------- NCS (Annäherung) ---------- */
@@ -875,9 +881,9 @@ document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{document.que
   document.querySelectorAll('[data-pane]').forEach(p=>p.hidden=p.dataset.pane!==b.dataset.tab)});
 function showTab(n){document.querySelector(`.tabs [data-tab="${n}"]`).click()}
 
-$('#useStd').onclick=()=>{hist.length=0;lastSnapStr='';syncUndo();state.src='std';state.img=null;state.corners=[];state.outline=null;state.holes=[];state.editOut=false;state.ptSel=null;PW=1200;PH=780;W=1200;H=660;state.wallW=null;state.poly=[[0,0],[1200,0],[1200,660],[0,660]];state.wallM=state.wallH*1200/660;state.editWall=false;ensure();resetLayerPos();syncWall();scaleTxt();schedule()};
+$('#useStd').onclick=()=>{hist.length=0;future.length=0;lastSnapStr='';syncUndo();state.src='std';state.img=null;state.corners=[];state.outline=null;state.holes=[];state.editOut=false;state.ptSel=null;PW=1200;PH=780;W=1200;H=660;state.wallW=null;state.poly=[[0,0],[1200,0],[1200,660],[0,660]];state.wallM=state.wallH*1200/660;state.editWall=false;ensure();resetLayerPos();syncWall();scaleTxt();schedule()};
 function useWallImage(im){const s=Math.min(1,1600/Math.max(im.width,im.height));PW=Math.round(im.width*s);PH=Math.round(im.height*s);const c=mk(PW,PH);c.getContext('2d').drawImage(im,0,0,PW,PH);
-  state.img=c;state.src='foto';state.wallReady=false;state.outline=null;state.holes=[];state.editOut=false;state.ptSel=null;hist.length=0;lastSnapStr='';syncUndo();state.wallW=null;state.poly=[[PW*.3,PH*.25],[PW*.7,PH*.25],[PW*.7,PH*.75],[PW*.3,PH*.75]];state.editWall=true;state.shade=.85;W=1200;H=Math.max(200,Math.min(3200,Math.round(1200*wallAspect())));state.wallM=state.wallH*1200/H;ensure();detectCorners();showTab('wand');resetLayerPos();syncWall();scaleTxt();schedule();return c}
+  state.img=c;state.src='foto';state.wallReady=false;state.outline=null;state.holes=[];state.editOut=false;state.ptSel=null;hist.length=0;future.length=0;lastSnapStr='';syncUndo();state.wallW=null;state.poly=[[PW*.3,PH*.25],[PW*.7,PH*.25],[PW*.7,PH*.75],[PW*.3,PH*.75]];state.editWall=true;state.shade=.85;W=1200;H=Math.max(200,Math.min(3200,Math.round(1200*wallAspect())));state.wallM=state.wallH*1200/H;ensure();detectCorners();showTab('wand');resetLayerPos();syncWall();scaleTxt();schedule();return c}
 function toast(msg,ms){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toast._t);if(ms)toast._t=setTimeout(()=>t.hidden=true,ms)}
 let heicLib=null;function loadHeic(){if(heicLib)return heicLib;heicLib=new Promise((res,rej)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js';sc.onload=()=>window.heic2any?res(window.heic2any):rej(new Error('lib'));sc.onerror=()=>{heicLib=null;rej(new Error('net'))};document.head.appendChild(sc)});return heicLib}
 function imgFromBlob(b){return new Promise((res,rej)=>{const u=URL.createObjectURL(b),im=new Image();im.onload=()=>res(im);im.onerror=()=>{URL.revokeObjectURL(u);rej(new Error('decode'))};im.src=u})}
@@ -903,7 +909,7 @@ function autoCorners(){if(!state.corners||!state.corners.length)return;const mx=
   pushHist(true);state.poly=np;homo=computeHomo();refitFlat();scaleTxt();schedule()}
 $('#autoCorners').onclick=autoCorners;
 $('#snapTgl').onclick=()=>{state.snapOn=!state.snapOn;press($('#snapTgl'),state.snapOn);$('#snapTgl').textContent='Ecken einrasten: '+(state.snapOn?'an':'aus')};
-function wallDone(){state.editWall=false;state.editOut=false;state.ptSel=null;refitFlat();shadeMap=null;if(state.src==='foto'&&!state.wallReady){state.wallReady=true;state.base.on=true;state.base.color='#f0eee8';state.base.ncs=null;state.base.effect='glatt';syncBase()}syncWall();scaleTxt();schedule()}
+function wallDone(){pushHist(true);state.editWall=false;state.editOut=false;state.ptSel=null;refitFlat();shadeMap=null;if(state.src==='foto'&&!state.wallReady){state.wallReady=true;state.base.on=true;state.base.color='#f0eee8';state.base.ncs=null;state.base.effect='glatt';syncBase()}syncWall();scaleTxt();schedule()}
 $('#doneBtn').onclick=wallDone;$('#doneChip').onclick=wallDone;
 $('#editWall').onclick=()=>{state.editWall=!state.editWall;if(state.editWall)state.editOut=false;syncWall();schedule()};
 $('#editOut').onclick=()=>{state.editOut=!state.editOut;if(state.editOut){state.editWall=false;if(!state.outline)state.outline=state.poly.map(p=>p.slice())}state.ptSel=null;syncWall();schedule()};
@@ -941,7 +947,7 @@ document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement
 $('#closeOv').onclick=()=>{$('#overlay').hidden=true};
 
 /* ---------- Start: Beispiel ---------- */
-$('#undoBtn').onclick=undo;
+$('#undoBtn').onclick=undo;$('#redoBtn').onclick=redo;
 function histCapture(e){const t=e.target.closest('button,input');if(!t)return;
   if(t.closest('.tabs,#tools,#ncsHues')||['ncsClose','zIn','zOut','zReset','undoBtn','beforeBtn','saveBtn','closeOv','fileIn','stencilIn','useStd','editWall'].includes(t.id))return;
   if(e.type==='input')pushHist(false,t.id||t.type);else if(t.tagName==='BUTTON')pushHist(false,'');}
