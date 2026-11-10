@@ -265,8 +265,9 @@ body.fs.tools .toolsbtn{right:min(380px,88vw)}
         <div class="seg"><button class="chipb" id="editWall" type="button" aria-pressed="false">1 · Ecken (Perspektive)</button><button class="chipb" id="editOut" type="button" aria-pressed="false">2 · Umriss & Aussparungen</button></div>
         <p class="hint"><b>Ecken:</b> die vier gelben Punkte auf die vier Ecken der Wand ziehen. Daraus berechnet die App die Perspektive.</p>
         <p class="hint"><b>Umriss:</b> legt genau fest, wo gemalt wird. Auf eine Linie tippen setzt einen neuen Punkt, Punkte lassen sich verschieben. So folgst du Dachschrägen, Türen oder Möbeln. Mit „+ Aussparung“ schneidest du Flächen heraus, z. B. einen Schrank, ein Fenster oder eine Steckdose.</p>
-        <div class="seg" id="snapCtl"><button class="chipb" id="snapTgl" type="button" aria-pressed="true">Ecken einrasten: an</button><button class="chipb" id="autoCorners" type="button">Ecken automatisch suchen</button></div>
-        <p class="hint">Beim ersten Ziehen springt ein Punkt auf eine erkannte Ecke im Foto (Lupe und Punkt werden grün). Sitzt ein Punkt schon auf einer Ecke, springt er nicht mehr: dann lässt er sich millimetergenau verschieben. Der Punkt bleibt beim Antippen stehen und bewegt sich genau so weit wie dein Finger, die Lupe zeigt immer den Punkt. „Ecken automatisch suchen“ setzt die vier gelben Punkte auf die deutlichsten Ecken in ihrer Nähe.</p>
+        <div class="seg" id="snapCtl"><button class="chipb" id="snapTgl" type="button" aria-pressed="true">Ecken einrasten: an</button><button class="chipb" id="autoCorners" type="button">Ecken automatisch suchen</button><button class="chipb" id="autoWall" type="button">Ganze Wand erkennen</button><button class="chipb" id="manualWall" type="button">Ecken selber setzen</button></div>
+        <div class="toggles"><button class="chipb" id="autoWallTgl" type="button" aria-pressed="true">Beim Foto-Laden automatisch erkennen: an</button></div>
+        <p class="hint">Beim ersten Ziehen springt ein Punkt auf eine erkannte Ecke im Foto (Lupe und Punkt werden grün). Sitzt ein Punkt schon auf einer Ecke, springt er nicht mehr: dann lässt er sich millimetergenau verschieben. Der Punkt bleibt beim Antippen stehen und bewegt sich genau so weit wie dein Finger, die Lupe zeigt immer den Punkt. „Ecken automatisch suchen“ setzt die vier gelben Punkte auf die deutlichsten Ecken in ihrer Nähe. „Ganze Wand erkennen“ sucht die zusammenhängende Wandfläche in der Bildmitte und setzt die Ecken selbst (passiert beim Laden eines Fotos automatisch, ausser du schaltest es aus). „Ecken selber setzen“ stellt die vier Punkte zurück in die Mitte, damit du sie von Hand auf die Ecken ziehst.</p>
         <div class="seg" id="outCtl" hidden>
           <button class="chipb" id="addHole" type="button">+ Aussparung</button>
           <button class="chipb" id="delPt" type="button" disabled>Gewählten Punkt löschen</button>
@@ -1078,7 +1079,7 @@ function showTab(n){document.querySelector(`.tabs [data-tab="${n}"]`).click()}
 
 $('#useStd').onclick=()=>{hist.length=0;future.length=0;lastSnapStr='';syncUndo();state.src='std';state.img=null;state.corners=[];state.outline=null;state.holes=[];state.editOut=false;state.ptSel=null;state.editWall=false;setupStd();resetLayerPos();syncWall();scaleTxt();schedule()};
 function useWallImage(im){const s=Math.min(1,1600/Math.max(im.width,im.height));PW=Math.round(im.width*s);PH=Math.round(im.height*s);const c=mk(PW,PH);c.getContext('2d').drawImage(im,0,0,PW,PH);
-  state.img=c;state.src='foto';cv.style.maxWidth='';state.wallReady=false;state.outline=null;state.holes=[];state.editOut=false;state.ptSel=null;hist.length=0;future.length=0;lastSnapStr='';syncUndo();state.wallW=null;state.poly=[[PW*.3,PH*.25],[PW*.7,PH*.25],[PW*.7,PH*.75],[PW*.3,PH*.75]];state.editWall=true;state.shade=.85;W=1200;H=Math.max(200,Math.min(3200,Math.round(1200*wallAspect())));state.wallM=state.wallH*1200/H;ensure();detectCorners();showTab('wand');resetLayerPos();syncWall();scaleTxt();schedule();return c}
+  state.img=c;state.src='foto';cv.style.maxWidth='';state.wallReady=false;state.outline=null;state.holes=[];state.editOut=false;state.ptSel=null;hist.length=0;future.length=0;lastSnapStr='';syncUndo();state.wallW=null;state.poly=[[PW*.3,PH*.25],[PW*.7,PH*.25],[PW*.7,PH*.75],[PW*.3,PH*.75]];state.editWall=true;state.shade=.85;W=1200;H=Math.max(200,Math.min(3200,Math.round(1200*wallAspect())));state.wallM=state.wallH*1200/H;ensure();detectCorners();if(autoWallOn){try{autoWall(true)}catch(e){}}else toast('Die vier gelben Punkte auf die Ecken der Wand ziehen.',3000);state.wallW=null;H=Math.max(200,Math.min(3200,Math.round(1200*wallAspect())));state.wallM=state.wallH*1200/H;ensure();showTab('wand');resetLayerPos();syncWall();scaleTxt();schedule();return c}
 function toast(msg,ms){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toast._t);if(ms)toast._t=setTimeout(()=>t.hidden=true,ms)}
 let heicLib=null;function loadHeic(){if(heicLib)return heicLib;heicLib=new Promise((res,rej)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js';sc.onload=()=>window.heic2any?res(window.heic2any):rej(new Error('lib'));sc.onerror=()=>{heicLib=null;rej(new Error('net'))};document.head.appendChild(sc)});return heicLib}
 function imgFromBlob(b){return new Promise((res,rej)=>{const u=URL.createObjectURL(b),im=new Image();im.onload=()=>res(im);im.onerror=()=>{URL.revokeObjectURL(u);rej(new Error('decode'))};im.src=u})}
@@ -1103,6 +1104,46 @@ function autoCorners(){if(!state.corners||!state.corners.length)return;const mx=
   const area=q=>Math.abs(q.reduce((s,p,i)=>s+p[0]*q[(i+1)%4][1]-q[(i+1)%4][0]*p[1],0))/2;if(!ok||area(np)<area(state.poly)*.5)return;
   pushHist(true);setPoly(np);refitFlat();scaleTxt();schedule()}
 $('#autoCorners').onclick=autoCorners;
+/* ---------- Wand automatisch erkennen ---------- */
+function findWall(){if(state.src!=='foto'||!state.img)return null;const sc=Math.min(1,360/Math.max(PW,PH)),w=Math.round(PW*sc),h=Math.round(PH*sc),c=mk(w,h),t=c.getContext('2d');t.filter='blur(1.2px)';t.drawImage(state.img,0,0,w,h);t.filter='none';
+  const d=t.getImageData(0,0,w,h).data,N=w*h,R=new Float32Array(N),G=new Float32Array(N),B=new Float32Array(N);for(let i=0;i<N;i++){R[i]=d[i*4];G[i]=d[i*4+1];B[i]=d[i*4+2]}
+  const gm=new Float32Array(N);for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){const i=y*w+x;let s2=0;for(const A of[R,G,B]){const gx=(A[i-w+1]+2*A[i+1]+A[i+w+1])-(A[i-w-1]+2*A[i-1]+A[i+w-1]),gy=(A[i+w-1]+2*A[i+w]+A[i+w+1])-(A[i-w-1]+2*A[i-w]+A[i-w+1]);s2+=gx*gx+gy*gy}gm[i]=Math.sqrt(s2)/8}
+  for(let x=0;x<w;x++){gm[x]=gm[(h-1)*w+x]=1e9}for(let y=0;y<h;y++){gm[y*w]=gm[y*w+w-1]=1e9}
+  const srt=Array.from(gm.filter(v=>v<1e8)).sort((a,b)=>a-b),T=Math.max(14,srt[Math.floor(srt.length*.85)]||14);
+  const grow=(sx,sy)=>{const m=new Uint8Array(N),q=new Int32Array(N);let qh=0,qt=0;const s0=sy*w+sx;if(gm[s0]>T)return null;const r0=R[s0],g0=G[s0],b0=B[s0];m[s0]=1;q[qt++]=s0;
+    while(qh<qt){const i=q[qh++],x=i%w;for(const j of[i-1,i+1,i-w,i+w]){if(j<0||j>=N||m[j])continue;if((j===i-1&&x===0)||(j===i+1&&x===w-1))continue;if(gm[j]>T)continue;
+      if(Math.abs(R[j]-R[i])>=10||Math.abs(G[j]-G[i])>=10||Math.abs(B[j]-B[i])>=10)continue;if(Math.abs(R[j]-r0)>=90||Math.abs(G[j]-g0)>=90||Math.abs(B[j]-b0)>=90)continue;m[j]=1;q[qt++]=j}}return{m,n:qt,q}};
+  let best=null,bs=0;for(const fy of[.4,.5,.6])for(const fx of[.35,.5,.65]){const r=grow(Math.round(w*fx),Math.round(h*fy));if(!r||r.n<N*.02)continue;let cx=0,cy=0;for(let k=0;k<r.n;k++){cx+=r.q[k]%w;cy+=(r.q[k]/w|0)}cx/=r.n*w;cy/=r.n*h;const sco=r.n*Math.exp(-((cx-.5)**2+(cy-.5)**2)/.08);if(sco>bs){bs=sco;best=r.m}}
+  if(!best)return null;
+  const morph=(m,r,dil)=>{const o=new Uint8Array(N),tmp=new Uint8Array(N);for(let y=0;y<h;y++)for(let x=0;x<w;x++){let v=dil?0:1;for(let k=-r;k<=r;k++){const xx=x+k;const a=xx<0||xx>=w?(dil?0:0):m[y*w+xx];if(dil?a:!a){v=dil?1:0;break}}tmp[y*w+x]=v}
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){let v=dil?0:1;for(let k=-r;k<=r;k++){const yy=y+k;const a=yy<0||yy>=h?0:tmp[yy*w+x];if(dil?a:!a){v=dil?1:0;break}}o[y*w+x]=v}return o};
+  let m=morph(morph(best,3,1),3,0);m=morph(morph(m,4,0),4,1);
+  const lab=new Int32Array(N);let bl=0,bn=0,cur=0;const q=new Int32Array(N);for(let i=0;i<N;i++){if(!m[i]||lab[i])continue;cur++;let qh=0,qt=0;q[qt++]=i;lab[i]=cur;while(qh<qt){const k=q[qh++],x=k%w;for(const j of[k-1,k+1,k-w,k+w]){if(j<0||j>=N||!m[j]||lab[j])continue;if((j===k-1&&x===0)||(j===k+1&&x===w-1))continue;lab[j]=cur;q[qt++]=j}}if(qt>bn){bn=qt;bl=cur}}
+  if(bn<N*.03)return null;for(let i=0;i<N;i++)m[i]=lab[i]===bl?1:0;
+  {const cc=new Int32Array(w),rc=new Int32Array(h);for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(m[y*w+x]){cc[x]++;rc[y]++}
+   const cut=(arr,len)=>{const nz=Array.from(arr).filter(v=>v>0).sort((a,b)=>a-b);const med=nz[Math.floor(nz.length*.75)]||0,th=med*.72;let a0=0,a1=len-1;while(a0<len&&arr[a0]<th)a0++;while(a1>0&&arr[a1]<th)a1--;return[a0,a1]};
+   const[xl,xr]=cut(cc,w),[yt,yb]=cut(rc,h);for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(x<xl-1||x>xr+1||y<yt-1||y>yb+1)m[y*w+x]=0}
+  const side=(k)=>{const pts=[];if(k<2){for(let y=0;y<h;y++){let xs=-1;if(k===0){for(let x=0;x<w;x++)if(m[y*w+x]){xs=x;break}}else{for(let x=w-1;x>=0;x--)if(m[y*w+x]){xs=x;break}}if(xs>=0)pts.push([y,xs])}}
+    else{for(let x=0;x<w;x++){let ys=-1;if(k===2){for(let y=0;y<h;y++)if(m[y*w+x]){ys=y;break}}else{for(let y=h-1;y>=0;y--)if(m[y*w+x]){ys=y;break}}if(ys>=0)pts.push([x,ys])}}
+    const lim=k<2?w:h,rr=rng(7+k);let bb=null,bi=0;if(pts.length<8)return null;
+    for(let it=0;it<300;it++){const p1=pts[Math.floor(rr()*pts.length)],p2=pts[Math.floor(rr()*pts.length)];if(Math.abs(p1[0]-p2[0])<pts.length*.1)continue;const a=(p2[1]-p1[1])/(p2[0]-p1[0]);if(Math.abs(a)>.7)continue;const b=p1[1]-a*p1[0];
+      let n=0,sb=0;for(const p of pts){const e=Math.abs(p[1]-(a*p[0]+b));if(e<1.6){n++;sb+=p[1]}}const mv=sb/Math.max(1,n);if(mv<2.5||mv>lim-3.5)n*=.15;if(n>bi){bi=n;bb=[a,b]}}
+    if(!bb)return null;let s0=0,s1=0,s00=0,s01=0,c2=0;for(const p of pts){if(Math.abs(p[1]-(bb[0]*p[0]+bb[1]))<2){s0+=p[0];s1+=p[1];s00+=p[0]*p[0];s01+=p[0]*p[1];c2++}}const den=c2*s00-s0*s0;if(c2>5&&Math.abs(den)>1e-6){const a=(c2*s01-s0*s1)/den;bb=[a,(s1-a*s0)/c2]}return bb};
+  const L=side(0),Rt=side(1),Tp=side(2),Bt=side(3);if(!L||!Rt||!Tp||!Bt)return null;
+  const X=(v,hz)=>{const y=(hz[0]*v[1]+hz[1])/(1-hz[0]*v[0]);return[v[0]*y+v[1],y]};
+  const pts=[X(L,Tp),X(Rt,Tp),X(Rt,Bt),X(L,Bt)].map(p=>[p[0]/sc,p[1]/sc]);
+  const cross=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);let sg=0;for(let i=0;i<4;i++){const cc=cross(pts[i],pts[(i+1)%4],pts[(i+2)%4]);if(Math.abs(cc)<1)return null;if(!sg)sg=Math.sign(cc);else if(Math.sign(cc)!==sg)return null}
+  if(pts.some(p=>p[0]<-PW*.05||p[0]>PW*1.05||p[1]<-PH*.05||p[1]>PH*1.05))return null;
+  const area=Math.abs(pts.reduce((s2,p,i)=>s2+p[0]*pts[(i+1)%4][1]-pts[(i+1)%4][0]*p[1],0))/2;if(area<PW*PH*.04)return null;
+  return pts.map(p=>[Math.max(0,Math.min(PW,p[0])),Math.max(0,Math.min(PH,p[1]))])}
+function autoWall(silent){const pts=findWall();if(!pts){if(!silent)toast('Wand nicht sicher erkannt. Bitte die vier Punkte von Hand auf die Ecken ziehen.',3500);return false}
+  if(!silent)pushHist(true);setPoly(pts);refitFlat();scaleTxt();schedule();toast('Wand erkannt. Ecken prüfen, dann „✓ Fläche fertig“.',3000);return true}
+$('#autoWall').onclick=()=>{autoWall(false)};
+var autoWallOn=true;try{autoWallOn=localStorage.getItem('ws-autowall')!=='0'}catch(e){}
+function syncAutoWall(){press($('#autoWallTgl'),autoWallOn);$('#autoWallTgl').textContent='Beim Foto-Laden automatisch erkennen: '+(autoWallOn?'an':'aus')}syncAutoWall();
+$('#autoWallTgl').onclick=()=>{autoWallOn=!autoWallOn;try{localStorage.setItem('ws-autowall',autoWallOn?'1':'0')}catch(e){}syncAutoWall()};
+$('#manualWall').onclick=()=>{if(state.src!=='foto'||!state.img)return;pushHist(true);setPoly([[PW*.3,PH*.25],[PW*.7,PH*.25],[PW*.7,PH*.75],[PW*.3,PH*.75]]);state.editWall=true;state.editOut=false;refitFlat();syncWall();scaleTxt();schedule();toast('Die vier gelben Punkte selber auf die Ecken der Wand ziehen.',3000)};
+
 $('#snapTgl').onclick=()=>{state.snapOn=!state.snapOn;press($('#snapTgl'),state.snapOn);$('#snapTgl').textContent='Ecken einrasten: '+(state.snapOn?'an':'aus')};
 function wallDone(){pushHist(true);state.editWall=false;state.editOut=false;state.ptSel=null;refitFlat();shadeMap=null;if(state.src==='foto'&&!state.wallReady&&state.keepDesign){state.wallReady=true}if(state.src==='foto'&&!state.wallReady){state.wallReady=true;state.base.on=true;state.base.color='#f0eee8';state.base.ncs=null;state.base.effect='glatt';syncBase()}syncWall();scaleTxt();schedule()}
 $('#doneBtn').onclick=wallDone;$('#doneChip').onclick=wallDone;
