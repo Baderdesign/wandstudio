@@ -277,9 +277,9 @@ body.fs.tools .toolsbtn{right:min(380px,88vw)}
         <div class="seg"><button class="chipb" id="editWall" type="button" aria-pressed="false">1 · Ecken (Perspektive)</button><button class="chipb" id="editOut" type="button" aria-pressed="false">2 · Umriss & Aussparungen</button></div>
         <p class="hint"><b>Ecken:</b> die vier gelben Punkte auf die vier Ecken der Wand ziehen. Daraus berechnet die App die Perspektive.</p>
         <p class="hint"><b>Umriss:</b> legt genau fest, wo gemalt wird. Auf eine Linie tippen setzt einen neuen Punkt, Punkte lassen sich verschieben. So folgst du Dachschrägen, Türen oder Möbeln. Mit „+ Aussparung“ schneidest du Flächen heraus, z. B. einen Schrank, ein Fenster oder eine Steckdose.</p>
-        <div class="seg" id="snapCtl"><button class="chipb" id="snapTgl" type="button" aria-pressed="true">Ecken einrasten: an</button><button class="chipb" id="autoCorners" type="button">Ecken automatisch suchen</button><button class="chipb" id="autoWall" type="button">Ganze Wand erkennen</button><button class="chipb" id="manualWall" type="button">Ecken selber setzen</button></div>
+        <div class="seg" id="snapCtl"><button class="chipb" id="snapTgl" type="button" aria-pressed="true">Ecken einrasten: an</button><button class="chipb" id="autoCorners" type="button">Ecken automatisch suchen</button><button class="chipb" id="aiWall" type="button">✦ Wand mit KI erkennen</button><button class="chipb" id="autoWall" type="button">Ganze Wand erkennen</button><button class="chipb" id="manualWall" type="button">Ecken selber setzen</button></div>
         <div class="toggles"><button class="chipb" id="autoWallTgl" type="button" aria-pressed="true">Beim Foto-Laden automatisch erkennen: an</button></div>
-        <p class="hint">Beim ersten Ziehen springt ein Punkt auf eine erkannte Ecke im Foto (Lupe und Punkt werden grün). Sitzt ein Punkt schon auf einer Ecke, springt er nicht mehr: dann lässt er sich millimetergenau verschieben. Der Punkt bleibt beim Antippen stehen und bewegt sich genau so weit wie dein Finger, die Lupe zeigt immer den Punkt. „Ecken automatisch suchen“ setzt die vier gelben Punkte auf die deutlichsten Ecken in ihrer Nähe. „Ganze Wand erkennen“ sucht die zusammenhängende Wandfläche in der Bildmitte und setzt die Ecken selbst (passiert beim Laden eines Fotos automatisch, ausser du schaltest es aus). „Ecken selber setzen“ stellt die vier Punkte zurück in die Mitte, damit du sie von Hand auf die Ecken ziehst.</p>
+        <p class="hint">Beim ersten Ziehen springt ein Punkt auf eine erkannte Ecke im Foto (Lupe und Punkt werden grün). Sitzt ein Punkt schon auf einer Ecke, springt er nicht mehr: dann lässt er sich millimetergenau verschieben. Der Punkt bleibt beim Antippen stehen und bewegt sich genau so weit wie dein Finger, die Lupe zeigt immer den Punkt. „Ecken automatisch suchen“ setzt die vier gelben Punkte auf die deutlichsten Ecken in ihrer Nähe. „Ganze Wand erkennen“ sucht die zusammenhängende Wandfläche in der Bildmitte und setzt die Ecken selbst (passiert beim Laden eines Fotos automatisch, ausser du schaltest es aus). „✦ Wand mit KI erkennen“ lädt beim ersten Mal ein kleines KI-Modell (ca. 4 MB, braucht Internet) und schlägt Wand, Ecken und Aussparungen für Türen, Fenster und Möbel vor. Steckdosen erkennt die KI nicht. „Ecken selber setzen“ stellt die vier Punkte zurück in die Mitte, damit du sie von Hand auf die Ecken ziehst.</p>
         <div class="seg" id="outCtl" hidden>
           <button class="chipb" id="addHole" type="button">+ Aussparung</button>
           <button class="chipb" id="delPt" type="button" disabled>Gewählten Punkt löschen</button>
@@ -1130,15 +1130,15 @@ function autoCorners(){if(!state.corners||!state.corners.length)return;const mx=
   pushHist(true);setPoly(np);refitFlat();scaleTxt();schedule()}
 $('#autoCorners').onclick=autoCorners;
 /* ---------- Wand automatisch erkennen ---------- */
-function findWall(){if(state.src!=='foto'||!state.img)return null;const sc=Math.min(1,360/Math.max(PW,PH)),w=Math.round(PW*sc),h=Math.round(PH*sc),c=mk(w,h),t=c.getContext('2d');t.filter='blur(1.2px)';t.drawImage(state.img,0,0,w,h);t.filter='none';
+function findWall(ai){if(state.src!=='foto'||!state.img)return null;const sc=Math.min(1,360/Math.max(PW,PH)),w=Math.round(PW*sc),h=Math.round(PH*sc),AL=ai?aiGrid(ai,w,h):null,c=mk(w,h),t=c.getContext('2d');t.filter='blur(1.2px)';t.drawImage(state.img,0,0,w,h);t.filter='none';
   const d=t.getImageData(0,0,w,h).data,N=w*h,R=new Float32Array(N),G=new Float32Array(N),B=new Float32Array(N);for(let i=0;i<N;i++){R[i]=d[i*4];G[i]=d[i*4+1];B[i]=d[i*4+2]}
   const gm=new Float32Array(N);for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){const i=y*w+x;let s2=0;for(const A of[R,G,B]){const gx=(A[i-w+1]+2*A[i+1]+A[i+w+1])-(A[i-w-1]+2*A[i-1]+A[i+w-1]),gy=(A[i+w-1]+2*A[i+w]+A[i+w+1])-(A[i-w-1]+2*A[i-w]+A[i-w+1]);s2+=gx*gx+gy*gy}gm[i]=Math.sqrt(s2)/8}
   for(let x=0;x<w;x++){gm[x]=gm[(h-1)*w+x]=1e9}for(let y=0;y<h;y++){gm[y*w]=gm[y*w+w-1]=1e9}
   const srt=Array.from(gm.filter(v=>v<1e8)).sort((a,b)=>a-b),T=Math.max(14,srt[Math.floor(srt.length*.85)]||14);
-  const grow=(sx,sy)=>{const m=new Uint8Array(N),q=new Int32Array(N);let qh=0,qt=0;const s0=sy*w+sx;if(gm[s0]>T)return null;const r0=R[s0],g0=G[s0],b0=B[s0];m[s0]=1;q[qt++]=s0;
-    while(qh<qt){const i=q[qh++],x=i%w;for(const j of[i-1,i+1,i-w,i+w]){if(j<0||j>=N||m[j])continue;if((j===i-1&&x===0)||(j===i+1&&x===w-1))continue;if(gm[j]>T)continue;
-      if(Math.abs(R[j]-R[i])>=10||Math.abs(G[j]-G[i])>=10||Math.abs(B[j]-B[i])>=10)continue;if(Math.abs(R[j]-r0)>=90||Math.abs(G[j]-g0)>=90||Math.abs(B[j]-b0)>=90)continue;m[j]=1;q[qt++]=j}}return{m,n:qt,q}};
-  let best=null,bs=0;for(const fy of[.4,.5,.6])for(const fx of[.35,.5,.65]){const r=grow(Math.round(w*fx),Math.round(h*fy));if(!r||r.n<N*.02)continue;let cx=0,cy=0;for(let k=0;k<r.n;k++){cx+=r.q[k]%w;cy+=(r.q[k]/w|0)}cx/=r.n*w;cy/=r.n*h;const sco=r.n*Math.exp(-((cx-.5)**2+(cy-.5)**2)/.08);if(sco>bs){bs=sco;best=r.m}}
+  const grow=(sx,sy)=>{const m=new Uint8Array(N),q=new Int32Array(N);let qh=0,qt=0;const s0=sy*w+sx;if(gm[s0]>T)return null;if(AL&&AL[s0]!==1)return null;const ET=AL?T*1.6:T,DT=AL?16:10;const r0=R[s0],g0=G[s0],b0=B[s0];m[s0]=1;q[qt++]=s0;
+    while(qh<qt){const i=q[qh++],x=i%w;for(const j of[i-1,i+1,i-w,i+w]){if(j<0||j>=N||m[j])continue;if((j===i-1&&x===0)||(j===i+1&&x===w-1))continue;if(AL&&AL[j]!==1)continue;if(gm[j]>ET)continue;
+      if(Math.abs(R[j]-R[i])>=DT||Math.abs(G[j]-G[i])>=DT||Math.abs(B[j]-B[i])>=DT)continue;if(Math.abs(R[j]-r0)>=90||Math.abs(G[j]-g0)>=90||Math.abs(B[j]-b0)>=90)continue;m[j]=1;q[qt++]=j}}return{m,n:qt,q}};
+  let best=null,bs=0;for(const fy of(AL?[.3,.4,.5,.6,.7]:[.4,.5,.6]))for(const fx of(AL?[.2,.35,.5,.65,.8]:[.35,.5,.65])){const r=grow(Math.round(w*fx),Math.round(h*fy));if(!r||r.n<N*.02)continue;let cx=0,cy=0;for(let k=0;k<r.n;k++){cx+=r.q[k]%w;cy+=(r.q[k]/w|0)}cx/=r.n*w;cy/=r.n*h;const sco=r.n*Math.exp(-((cx-.5)**2+(cy-.5)**2)/.08);if(sco>bs){bs=sco;best=r.m}}
   if(!best)return null;
   const morph=(m,r,dil)=>{const o=new Uint8Array(N),tmp=new Uint8Array(N);for(let y=0;y<h;y++)for(let x=0;x<w;x++){let v=dil?0:1;for(let k=-r;k<=r;k++){const xx=x+k;const a=xx<0||xx>=w?(dil?0:0):m[y*w+xx];if(dil?a:!a){v=dil?1:0;break}}tmp[y*w+x]=v}
     for(let y=0;y<h;y++)for(let x=0;x<w;x++){let v=dil?0:1;for(let k=-r;k<=r;k++){const yy=y+k;const a=yy<0||yy>=h?0:tmp[yy*w+x];if(dil?a:!a){v=dil?1:0;break}}o[y*w+x]=v}return o};
@@ -1164,6 +1164,41 @@ function findWall(){if(state.src!=='foto'||!state.img)return null;const sc=Math.
 function autoWall(silent){const pts=findWall();if(!pts){if(!silent)toast('Wand nicht sicher erkannt. Bitte die vier Punkte von Hand auf die Ecken ziehen.',3500);return false}
   if(!silent)pushHist(true);setPoly(pts);refitFlat();scaleTxt();schedule();toast('Wand erkannt. Ecken prüfen, dann „✓ Fläche fertig“.',3000);return true}
 $('#autoWall').onclick=()=>{autoWall(false)};
+/* ---------- KI-Wanderkennung (SegFormer ADE20K, läuft im Browser) ---------- */
+let aiSeg=null,aiLoading=null;
+function aiGrid(ai,w,h){const g=new Uint8Array(w*h);for(let y=0;y<h;y++){const sy=Math.min(ai.h-1,Math.floor((y+.5)*ai.h/h));for(let x=0;x<w;x++){const sx=Math.min(ai.w-1,Math.floor((x+.5)*ai.w/w));g[y*w+x]=ai.lab[sy*ai.w+sx]}}return g}
+async function aiLoad(){if(aiSeg)return aiSeg;if(aiLoading)return aiLoading;aiLoading=(async()=>{
+  const T=await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2');T.env.allowLocalModels=false;
+  aiSeg=await T.pipeline('image-segmentation','Xenova/segformer-b0-finetuned-ade-512-512');return aiSeg})();
+  try{return await aiLoading}catch(e){aiLoading=null;throw e}}
+async function aiRun(){const s=Math.min(1,512/Math.max(PW,PH)),w=Math.round(PW*s),h=Math.round(PH*s),c=mk(w,h);c.getContext('2d').drawImage(state.img,0,0,w,h);
+  const seg=await aiLoad();const out=await seg(c.toDataURL('image/jpeg',.9));
+  const lab=new Uint8Array(w*h).fill(4);const code={wall:1,ceiling:2,floor:3};let any=false;
+  for(const o of out){const m=o.mask,k=code[o.label]||4;if(k===1)any=true;const mw=m.width,mh=m.height,d=m.data,ch=m.channels||1;
+    for(let y=0;y<h;y++){const yy=Math.min(mh-1,Math.floor((y+.5)*mh/h));for(let x=0;x<w;x++){const xx=Math.min(mw-1,Math.floor((x+.5)*mw/w));if(d[(yy*mw+xx)*ch]>127)lab[y*w+x]=k}}}
+  return any?{w,h,lab}:null}
+function aiHoles(ai,quad){const w=ai.w,h=ai.h,kx=w/PW,ky=h/PH,q=quad.map(([x,y])=>[x*kx,y*ky]);
+  const inQ=(x,y)=>{let c=false;for(let i=0,j=3;i<4;j=i++){const[xi,yi]=q[i],[xj,yj]=q[j];if(((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi))c=!c}return c};
+  const N=w*h,m=new Uint8Array(N);let qa=0;for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(inQ(x+.5,y+.5)){qa++;if(ai.lab[y*w+x]===4)m[y*w+x]=1}
+  const seen=new Uint8Array(N),st=new Int32Array(N),holes=[];
+  for(let i=0;i<N;i++){if(!m[i]||seen[i])continue;let n=0,top=0;st[top++]=i;seen[i]=1;const px=[];
+    while(top){const k=st[--top],x=k%w;px.push(k);n++;for(const j of[k-1,k+1,k-w,k+w]){if(j<0||j>=N||seen[j]||!m[j])continue;if((j===k-1&&x===0)||(j===k+1&&x===w-1))continue;seen[j]=1;st[top++]=j}}
+    if(n<qa*.004)continue;
+    const P=px.map(k=>[k%w,(k/w|0)]);P.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);const cr=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);const lo=[],up=[];
+    for(const p of P){while(lo.length>=2&&cr(lo[lo.length-2],lo[lo.length-1],p)<=0)lo.pop();lo.push(p)}for(let k=P.length-1;k>=0;k--){const p=P[k];while(up.length>=2&&cr(up[up.length-2],up[up.length-1],p)<=0)up.pop();up.push(p)}
+    let hull=lo.slice(0,-1).concat(up.slice(0,-1));
+    while(hull.length>8){let bi=0,ba=1e18;for(let k=0;k<hull.length;k++){const a=hull[(k+hull.length-1)%hull.length],b=hull[k],c=hull[(k+1)%hull.length],ar=Math.abs(cr(a,b,c));if(ar<ba){ba=ar;bi=k}}hull.splice(bi,1)}
+    holes.push({n,poly:hull.map(([x,y])=>[(x+.5)/kx,(y+.5)/ky])})}
+  holes.sort((a,b)=>b.n-a.n);return holes.slice(0,8).map(o=>o.poly)}
+async function aiWall(){if(state.src!=='foto'||!state.img){toast('Zuerst ein eigenes Foto laden.',2500);return}
+  const b=$('#aiWall');b.disabled=true;const old=b.textContent;b.textContent='KI arbeitet …';
+  toast(aiSeg?'KI erkennt die Wand …':'KI-Modell wird geladen (nur beim ersten Mal, ca. 4 MB) …');
+  try{const ai=await aiRun();if(!ai)throw new Error('keine Wand');const pts=findWall(ai);if(!pts)throw new Error('kein Viereck');
+    pushHist(true);setPoly(pts);state.outline=null;state.holes=aiHoles(ai,pts);state.editWall=true;state.editOut=false;refitFlat();syncWall();scaleTxt();schedule();
+    const nh=state.holes.length;toast('KI: Wand erkannt'+(nh?(', '+nh+(nh>1?' Aussparungen':' Aussparung')+' vorgeschlagen'):'')+'. Ecken und Umriss prüfen, dann „✓ Fläche fertig“.',4500)}
+  catch(e){console.warn(e);const ok=autoWall(false);if(ok)toast((e&&e.message==='keine Wand'||e&&e.message==='kein Viereck'?'KI hat keine Wand sicher gefunden':'KI nicht erreichbar')+' – normale Erkennung verwendet. Ecken prüfen.',4500)}
+  finally{b.disabled=false;b.textContent=old}}
+$('#aiWall').onclick=aiWall;
 var autoWallOn=true;try{autoWallOn=localStorage.getItem('ws-autowall')!=='0'}catch(e){}
 function syncAutoWall(){press($('#autoWallTgl'),autoWallOn);$('#autoWallTgl').textContent='Beim Foto-Laden automatisch erkennen: '+(autoWallOn?'an':'aus')}syncAutoWall();
 $('#autoWallTgl').onclick=()=>{autoWallOn=!autoWallOn;try{localStorage.setItem('ws-autowall',autoWallOn?'1':'0')}catch(e){}syncAutoWall()};
