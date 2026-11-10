@@ -215,6 +215,19 @@ body.fs .toolsbtn{display:flex;align-items:center;gap:6px;position:fixed;z-index
 body.fs.tools .toolsbtn{right:min(380px,88vw)}
 .toolsbtn:focus-visible{outline:2px solid #fff;outline-offset:2px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.acclock{position:fixed;inset:0;z-index:92;background:var(--bg);display:grid;place-items:center;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.accbox{width:100%;max-width:360px;display:flex;flex-direction:column;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px}
+.acchead{display:flex;flex-direction:column;margin-bottom:8px}.acchead b{font-size:22px;color:var(--accent)}.acchead span{color:var(--muted);font-size:13px}
+.accbox input,.accadd input{font:inherit;font-size:17px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--fg);width:100%;box-sizing:border-box}
+.accmsg{color:var(--danger);margin:4px 0;font-size:14px}.accbox .sbtn{margin-top:8px;padding:11px;font-size:15px}
+.accwrap{position:fixed;inset:0;z-index:91;background:rgba(0,0,0,.45);display:flex;justify-content:flex-end}
+.accpanel{background:var(--panel);color:var(--fg);width:100%;max-width:440px;height:100%;overflow:auto;box-sizing:border-box;padding:calc(16px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) 16px;display:flex;flex-direction:column;gap:12px}
+.acctop{display:flex;justify-content:space-between;align-items:center}.acctop b{font-size:18px}
+.accadd{display:flex;gap:8px}.accadd .sbtn{white-space:nowrap}
+.accnew{border:1px solid var(--accent);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}.accnew pre{white-space:pre-wrap;margin:0;font-size:14px;background:var(--bg);padding:8px;border-radius:8px}
+.acccard{border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:3px;margin-bottom:10px}.acccard b{font-size:16px}
+.accmeta{color:var(--muted);font-size:13px}.accacts{display:flex;gap:16px;flex-wrap:wrap;margin-top:6px}
+.acclink{background:none;border:0;padding:4px 0;font:inherit;font-size:14px;color:var(--accent);text-decoration:underline;cursor:pointer}.acclink.danger{color:var(--danger);font-weight:600}
 .v3d{position:fixed;inset:0;z-index:90;background:#0b0a09;display:flex;flex-direction:column;color:#f3ead6}
 .v3d canvas{flex:1;min-height:0;width:100%;display:block;touch-action:none;cursor:grab}
 .v3dtop{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));left:max(12px,env(safe-area-inset-left,0px));right:max(12px,env(safe-area-inset-right,0px));display:flex;justify-content:space-between;gap:10px;align-items:flex-start;pointer-events:none}
@@ -237,6 +250,7 @@ body.fs.tools .toolsbtn{right:min(380px,88vw)}
         <button class="sbtn" id="beforeBtn" type="button">Vorher halten</button>
         <button class="sbtn" id="v3dBtn" type="button" title="Wand in 3D mit echtem Licht ansehen">3D</button>
         <button class="sbtn" id="projBtn" type="button">📁 Projekte</button>
+        <button class="sbtn" id="accBtn" type="button" hidden>👥 Zugänge</button>
         <button class="sbtn" id="saveBtn" type="button">Bild speichern</button>
         <button class="sbtn donebtn" id="doneBtn" type="button" hidden>✓ Fläche fertig</button>
         <button class="sbtn" id="fitBtn" type="button" hidden>Bildschirm füllen</button>
@@ -514,6 +528,26 @@ body.fs.tools .toolsbtn{right:min(380px,88vw)}
     <label class="v3dctl"><span>Struktur <output id="v3dSOut"></output></span><input type="range" id="v3dS" min="0" max="200" value="100"></label>
   </div>
 </div>
+<div class="acclock" id="accLock" hidden>
+  <div class="accbox">
+    <div class="acchead"><b>Wandstudio</b><span>Bader Wandstudio</span></div>
+    <label class="lbl" for="accCode">Code</label><input id="accCode" type="text" autocomplete="username" autocapitalize="characters" placeholder="WS-1234">
+    <label class="lbl" for="accPin">PIN</label><input id="accPin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="6 Ziffern">
+    <p class="accmsg" id="accMsg" hidden></p>
+    <button class="sbtn donebtn" id="accGo" type="button">Anmelden</button>
+    <p class="hint">Keinen Zugang? Bitte bei Bader Wandstudio melden.</p>
+  </div>
+</div>
+<div class="accwrap" id="accSheet" hidden><div class="accpanel">
+  <div class="acctop"><b>Zugänge</b><button class="sbtn" id="accClose" type="button">Schliessen</button></div>
+  <p class="hint" id="accWho"></p>
+  <div id="accAdmin" hidden>
+    <div class="accadd"><input id="accName" type="text" placeholder="Name der Person"><button class="sbtn donebtn" id="accAdd" type="button">+ Einladen</button></div>
+    <div class="accnew" id="accNew" hidden></div>
+    <div id="accList"></div>
+  </div>
+  <button class="sbtn" id="accOut" type="button">Abmelden</button>
+</div></div>
 <div class="toast" id="toast" role="status" hidden></div>
 <button class="toolsbtn" id="toolsBtn" type="button" aria-expanded="false">Werkzeuge</button>
 <div class="overlay" id="overlay" hidden>
@@ -1424,9 +1458,14 @@ vec3 wallCol(vec2 uv,vec3 wp){
 `;
   const VSW=`attribute vec3 aP;attribute vec3 aN;attribute vec2 aUV;attribute float aF;uniform mat4 uMVP;varying vec3 vP;varying vec3 vN;varying vec2 vUV;varying float vF;
 void main(){vP=aP;vN=aN;vUV=aUV;vF=aF;gl_Position=uMVP*vec4(aP,1.);}`;
-  const FSW=COMMON+`varying vec3 vP;varying vec3 vN;varying vec2 vUV;varying float vF;uniform vec3 uFloor,uSide;
-void main(){if(vF<.5){vec3 n=normalize(vN);vec3 L=normalize(uLight-vP);float d=max(dot(n,L),0.)*.75+.22;vec3 c=vF<-.5?uFloor:uSide;
-  if(vF<-.5){float f=exp(-max(0.,vP.z)*.35);c*=.55+.45*f;}gl_FragColor=vec4(pow(c*d,vec3(1./2.2)),1.);return;}
+  const FSW=COMMON+`varying vec3 vP;varying vec3 vN;varying vec2 vUV;varying float vF;uniform vec3 uFloor,uSide;float hf(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+void main(){if(vF<.5){vec3 n=normalize(vN);vec3 L=normalize(uLight-vP);float d=max(dot(n,L),0.)*.75+.22;vec3 c=uSide;
+  if(vF<-.5){vec2 fp=vec2(vP.x,vP.z);float row=floor(fp.y/.19),off=hf(vec2(row,3.1))*1.4,col=floor((fp.x+off)/1.4);vec2 id=vec2(row,col);float hv=hf(id);
+    vec3 wa=vec3(.50,.29,.14),wb=vec3(.70,.46,.25);c=mix(wa,wb,hv*.8+.1);float far=clamp(length(uCam-vP)/3.5-.3,0.,1.);
+    float gr=sin((fp.y-row*.19)*120.+sin(fp.x*5.+hv*20.)*2.5+hv*40.)*.5+.5;gr=mix(gr,.5,far);c*=.85+.15*gr;c*=.93+.07*sin(fp.x*1.7+hv*9.);
+    float sy=fract(fp.y/.19),sx=fract((fp.x+off)/1.4);float ws=mix(.012,.03,far),wx=mix(.002,.006,far);float seam=max(1.-smoothstep(0.,ws,min(sy,1.-sy)),1.-smoothstep(0.,wx,min(sx,1.-sx)));c*=1.-seam*mix(.45,.2,far);
+    c=pow(c,vec3(1.08));float f=exp(-max(0.,vP.z)*.25);c*=.6+.4*f;
+    vec3 V2=normalize(uCam-vP),H2=normalize(L+V2);float sp=pow(max(dot(n,H2),0.),40.)*.18;gl_FragColor=vec4(pow(c*d+sp,vec3(1./2.2)),1.);return;}gl_FragColor=vec4(pow(c*d,vec3(1./2.2)),1.);return;}
   gl_FragColor=vec4(pow(clamp(wallCol(vUV,vP),0.,1.),vec3(1./2.2)),1.);}`;
   const FSC=COMMON+`varying vec3 vP;varying vec3 vN;varying vec2 vUV;varying float vF;uniform sampler2D tMask;uniform mat3 uPh2Flat;uniform float uMeanL;
 void main(){vec3 n=normalize(vN),L=normalize(uLight-vP),V=normalize(uCam-vP);float NdL=max(dot(n,L),0.);
@@ -1472,10 +1511,10 @@ void main(){vec2 q=(gl_FragCoord.xy-uScr*.5)*uS;q.y=-q.y;vec3 r=uRot*vec3(q,1.);
     const addMask=(drawFn,hv,metal)=>{tt.globalCompositeOperation='source-over';tt.globalAlpha=1;tt.clearRect(0,0,W,H);drawFn(tt);tt.globalCompositeOperation='source-in';tt.fillStyle=`rgb(${hv},${hv},${hv})`;tt.fillRect(0,0,W,H);
       ht.globalCompositeOperation='lighter';ht.drawImage(tmp,0,0);ht.globalCompositeOperation='source-over';if(metal){tt.fillStyle='#fff';tt.fillRect(0,0,W,H);mt.drawImage(tmp,0,0)}};
     const Lf=L=>Object.assign({},L,{relief:false,metallic:false,opacity:1});
-    const lh=L=>L.relief?150:(L.metallic?45:14);
+    const lh=L=>L.relief?165:105;
     const G=state.gi,gOn=!!(G&&G.on&&G.strokes.length);let gMask=null;
-    if(gOn){gMask=mk(W,H);gMask.getContext('2d').drawImage(strokeMask(G.strokes,([u,v])=>[u*W,v*H],W,G.seed),0,0);addMask(t=>t.drawImage(gMask,0,0),80,false)}
-    state.layers.forEach(L=>{if(L.island&&L.istrokes&&L.istrokes.length){const m=mk(W,H);m.getContext('2d').drawImage(islandMask(L),0,0);addMask(t=>t.drawImage(m,0,0),80,false);addMask(t=>drawLayer(t,Lf(L),m),lh(L),L.metallic)}
+    if(gOn){gMask=mk(W,H);gMask.getContext('2d').drawImage(strokeMask(G.strokes,([u,v])=>[u*W,v*H],W,G.seed),0,0);addMask(t=>t.drawImage(gMask,0,0),120,false)}
+    state.layers.forEach(L=>{if(L.island&&L.istrokes&&L.istrokes.length){const m=mk(W,H);m.getContext('2d').drawImage(islandMask(L),0,0);addMask(t=>t.drawImage(m,0,0),120,false);addMask(t=>drawLayer(t,Lf(L),m),lh(L),L.metallic)}
       else if(!L.island)addMask(t=>drawLayer(t,Lf(L),gOn?gMask:null),lh(L),L.metallic)});
     const el=mk(W,H),et=el.getContext('2d');if(state.src==='std'){et.setTransform(f,0,0,f,0,0);drawStdFg(et);et.setTransform(1,0,0,1,0,0);lt.drawImage(el,0,0)}
     const hd=ht.getImageData(0,0,W,H).data,md=mt.getImageData(0,0,W,H).data,ed=et.getImageData(0,0,W,H).data,out=new Uint8Array(W*H*4);
@@ -1546,6 +1585,57 @@ void main(){vec2 q=(gl_FragCoord.xy-uScr*.5)*uS;q.y=-q.y;vec3 r=uRot*vec3(q,1.);
     document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#v3d').hidden)close()})}
   return{wire,tex2D,open,close}})();
 V3.wire();
+
+/* ---------- Zugänge (Supabase): Anmelden mit Code + PIN, Admin lädt ein / sperrt / entfernt ---------- */
+const ACC=(function(){
+  const SB_URL='__SB_URL__',SB_KEY='__SB_KEY__';
+  const ON=SB_URL.startsWith('https://')&&SB_KEY.length>20&&!/claude|anthropic/.test(location.hostname);
+  const LS='ws-acc';let ses=null;try{ses=JSON.parse(localStorage.getItem(LS)||'null')}catch(e){}
+  const save=()=>{try{ses?localStorage.setItem(LS,JSON.stringify(ses)):localStorage.removeItem(LS)}catch(e){}};
+  async function rpc(fn,args){const r=await fetch(SB_URL.replace(/\/$/,'')+'/rest/v1/rpc/'+fn,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},body:JSON.stringify(args)});
+    if(!r.ok)throw new Error('Server '+r.status);const t=await r.text();return t?JSON.parse(t):null}
+  const fmt=d=>{if(!d)return'noch nie';const x=new Date(d);return x.toLocaleDateString('de-CH',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+x.toLocaleTimeString('de-CH',{hour:'2-digit',minute:'2-digit'})};
+  function lock(msg){$('#accLock').hidden=false;$('#accMsg').textContent=msg||'';$('#accMsg').hidden=!msg;$('#accBtn').hidden=true;setTimeout(()=>{try{$('#accCode').focus()}catch(e){}},50)}
+  function unlock(){$('#accLock').hidden=true;$('#accBtn').hidden=false;$('#accBtn').textContent=ses&&ses.admin?'👥 Zugänge':'👤 '+(ses?ses.name:'')}
+  async function check(){if(!ON)return;if(!ses||!ses.token){lock();return}
+    try{const r=await rpc('ws_check',{p_token:ses.token});if(r&&r.ok){ses.name=r.name;ses.admin=r.admin;ses.t=Date.now();save();unlock()}
+      else{ses=null;save();lock(r&&r.error==='gesperrt'?'Dein Zugang wurde gesperrt. Bitte melde dich bei Bader Wandstudio.':'Dein Zugang ist nicht mehr gültig. Bitte neu anmelden.')}}
+    catch(e){if(ses.t&&Date.now()-ses.t<14*864e5)unlock();else lock('Keine Verbindung. Für die Anmeldung braucht es Internet.')}}
+  async function login(){const c=$('#accCode').value.trim(),p=$('#accPin').value.trim();if(!c||!p){lock('Bitte Code und PIN eingeben.');return}
+    const b=$('#accGo');b.disabled=true;try{const r=await rpc('ws_login',{p_code:c,p_pin:p});
+      if(r&&r.ok){ses={token:r.token,name:r.name,admin:r.admin,t:Date.now()};save();$('#accPin').value='';unlock();toast('Willkommen, '+r.name+'!',2500)}
+      else lock(r&&r.error==='gesperrt'?'Dieser Zugang ist gesperrt.':'Code oder PIN falsch.')}
+    catch(e){lock('Keine Verbindung zum Server. Bitte Internet prüfen.')}finally{b.disabled=false}}
+  async function logout(){try{if(ses)await rpc('ws_logout',{p_token:ses.token})}catch(e){}ses=null;save();$('#accSheet').hidden=true;lock()}
+  /* Admin-Fenster */
+  let confirmId=null;
+  function showNew(name,code,pin,isNew){const box=$('#accNew');box.hidden=false;
+    const txt=`Zugang zum Wandstudio\n${location.origin+location.pathname}\nCode: ${code}\nPIN: ${pin}`;
+    box.innerHTML='';const h=document.createElement('b');h.textContent=(isNew?'Neuer Zugang für ':'Neuer PIN für ')+name;const pre=document.createElement('pre');pre.textContent=txt;
+    const cp=document.createElement('button');cp.type='button';cp.className='chipb';cp.textContent='Text kopieren';cp.onclick=()=>{navigator.clipboard.writeText(txt).then(()=>toast('Kopiert – jetzt per WhatsApp oder SMS senden.',2500)).catch(()=>{const r=document.createRange();r.selectNodeContents(pre);const s=getSelection();s.removeAllRanges();s.addRange(r)})};
+    const note=document.createElement('p');note.className='hint';note.textContent='Den PIN siehst du nur jetzt. Schick ihn der Person, zum Beispiel per WhatsApp.';box.append(h,pre,cp,note)}
+  async function list(){const host=$('#accList');host.innerHTML='<p class="hint">Lädt …</p>';
+    try{const r=await rpc('ws_list',{p_token:ses.token});if(!r||!r.ok)throw new Error(r&&r.error||'Fehler');host.innerHTML='';
+      r.users.forEach(u=>{const c=document.createElement('div');c.className='acccard';const n=document.createElement('b');n.textContent=u.name+(u.admin?' (Admin)':'');
+        const m=document.createElement('div');m.className='accmeta';m.textContent=`${u.code} · ${u.active?'aktiv':'gesperrt'}`;const l=document.createElement('div');l.className='accmeta';l.textContent='Letzte Anmeldung '+fmt(u.last_login)+(u.last_seen?' · zuletzt aktiv '+fmt(u.last_seen):'');
+        const a=document.createElement('div');a.className='accacts';const btn=(t,fn,cls)=>{const b=document.createElement('button');b.type='button';b.className='acclink'+(cls?' '+cls:'');b.textContent=t;b.onclick=fn;a.appendChild(b);return b};
+        if(!u.admin){btn(u.active?'Sperren':'Entsperren',async()=>{await act('ws_set_active',{p_id:u.id,p_active:!u.active});toast(u.name+(u.active?' gesperrt.':' entsperrt.'),2500)});
+          btn('Neuer PIN',async()=>{const r2=await act('ws_new_pin',{p_id:u.id});if(r2&&r2.pin)showNew(u.name,u.code,r2.pin,false)});
+          if(confirmId===u.id){btn('Wirklich entfernen?',async()=>{confirmId=null;await act('ws_remove',{p_id:u.id});toast(u.name+' entfernt.',2500)},'danger');btn('Abbrechen',()=>{confirmId=null;list()})}
+          else btn('Entfernen',()=>{confirmId=u.id;list()})}
+        else btn('Neuer PIN für mich',async()=>{const r2=await act('ws_new_pin',{p_id:u.id});if(r2&&r2.pin)showNew(u.name,u.code,r2.pin,false)});
+        c.append(n,m,l,a);host.appendChild(c)})}
+    catch(e){host.innerHTML='';const p=document.createElement('p');p.className='hint';p.textContent='Liste konnte nicht geladen werden: '+e.message;host.appendChild(p)}}
+  async function act(fn,args){try{const r=await rpc(fn,Object.assign({p_token:ses.token},args));if(!r||!r.ok){toast((r&&r.error)||'Fehler',3000);return null}await list();return r}catch(e){toast('Keine Verbindung zum Server.',3000);return null}}
+  function openSheet(){$('#accSheet').hidden=false;$('#accNew').hidden=true;$('#accWho').textContent='Angemeldet als '+(ses?ses.name:'');$('#accAdmin').hidden=!(ses&&ses.admin);if(ses&&ses.admin)list()}
+  function wire(){if(!ON){$('#accBtn').hidden=true;return}
+    $('#accGo').onclick=login;$('#accPin').addEventListener('keydown',e=>{if(e.key==='Enter')login()});$('#accCode').addEventListener('keydown',e=>{if(e.key==='Enter')$('#accPin').focus()});
+    $('#accBtn').onclick=openSheet;$('#accClose').onclick=()=>{$('#accSheet').hidden=true};$('#accOut').onclick=logout;
+    $('#accAdd').onclick=async()=>{const nm=$('#accName').value.trim();if(!nm){toast('Bitte einen Namen eingeben.',2500);return}const r=await act('ws_add',{p_name:nm});if(r&&r.code){$('#accName').value='';showNew(nm,r.code,r.pin,true)}};
+    if(ses&&ses.token){unlock()}else lock();check();setInterval(()=>{if(document.visibilityState==='visible')check()},30*60*1000);
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&ses&&ses.t&&Date.now()-ses.t>10*60*1000)check()})}
+  return{wire}})();
+ACC.wire();
 
 syncWall();syncBase();syncLayers();scaleTxt();render();renderWallBar();
 })();
