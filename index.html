@@ -1588,11 +1588,11 @@ V3.wire();
 
 /* ---------- Zugänge (Supabase): Anmelden mit Code + PIN, Admin lädt ein / sperrt / entfernt ---------- */
 const ACC=(function(){
-  const SB_URL='__SB_URL__',SB_KEY='__SB_KEY__';
+  const SB_URL='https://ljenfchiwbrstqeliujg.supabase.co',SB_KEY='sb_publishable_R6yLXKZmMJZyBv4vYzAx2Q_WJ4t_ffW';
   const ON=SB_URL.startsWith('https://')&&SB_KEY.length>20&&!/claude|anthropic/.test(location.hostname);
   const LS='ws-acc';let ses=null;try{ses=JSON.parse(localStorage.getItem(LS)||'null')}catch(e){}
   const save=()=>{try{ses?localStorage.setItem(LS,JSON.stringify(ses)):localStorage.removeItem(LS)}catch(e){}};
-  async function rpc(fn,args){const r=await fetch(SB_URL.replace(/\/$/,'')+'/rest/v1/rpc/'+fn,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},body:JSON.stringify(args)});
+  async function rpc(fn,args){const r=await fetch(SB_URL.replace(/\/$/,'')+'/rest/v1/rpc/'+fn,{method:'POST',headers:Object.assign({'apikey':SB_KEY,'Content-Type':'application/json'},SB_KEY.startsWith('eyJ')?{'Authorization':'Bearer '+SB_KEY}:{}),body:JSON.stringify(args)});
     if(!r.ok)throw new Error('Server '+r.status);const t=await r.text();return t?JSON.parse(t):null}
   const fmt=d=>{if(!d)return'noch nie';const x=new Date(d);return x.toLocaleDateString('de-CH',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+x.toLocaleTimeString('de-CH',{hour:'2-digit',minute:'2-digit'})};
   function lock(msg){$('#accLock').hidden=false;$('#accMsg').textContent=msg||'';$('#accMsg').hidden=!msg;$('#accBtn').hidden=true;setTimeout(()=>{try{$('#accCode').focus()}catch(e){}},50)}
