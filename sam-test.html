@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Wandstudio KI-Test</title>
+<style>
+:root{--bg:#202225;--panel:#292C30;--card:#32363B;--fg:#F2F0EB;--muted:#A5A8AC;--line:rgba(255,255,255,.1);--accent:#C5A77A;--ok:#7fbf8a;--bad:#e08a7a;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;padding:max(12px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 32px max(16px,env(safe-area-inset-left))}
+h1{font-size:18px;letter-spacing:.12em;margin:4px 0 2px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button,label.btn{font:inherit;font-size:14px;font-weight:600;min-height:44px;padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+button[aria-pressed=true]{background:var(--accent);color:#202225;border-color:var(--accent)}
+button:disabled{opacity:.4}
+label.btn input{display:none}
+.primary{background:var(--accent);color:#202225;border-color:var(--accent)}
+#status{font-size:13px;color:var(--muted);white-space:pre-line}
+.wrap{position:relative;width:100%;touch-action:none;border-radius:8px;overflow:hidden;background:#111}
+.wrap canvas{display:block;width:100%;height:auto}
+#ov{position:absolute;inset:0;pointer-events:none}
+table{width:100%;border-collapse:collapse;font-size:13px}td{padding:5px 0;border-bottom:1px solid var(--line)}td:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.hint{color:var(--muted);font-size:13px;margin:8px 0 0}
+.bar{height:6px;border-radius:3px;background:var(--panel);overflow:hidden;margin-top:8px}.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+</style>
+</head>
+<body>
+<h1>WANDSTUDIO · KI-TEST</h1>
+<p class="sub">Test: Wand per Fingertipp mit Meta Segment Anything (SlimSAM) erkennen – läuft direkt auf dem Gerät, ohne Server.</p>
+
+<div class="card">
+  <div class="row"><button class="primary" id="load">1 · KI-Modell laden</button><label class="btn" id="pick">2 · Foto wählen<input type="file" id="file" accept="image/*"></label></div>
+  <div class="bar"><i id="prog"></i></div>
+  <p id="status">Noch nicht geladen. Beim ersten Mal werden ca. 10–30 MB geladen (danach im Browser gespeichert).</p>
+</div>
+
+<div class="card" id="work" hidden>
+  <div class="row" style="margin-bottom:10px">
+    <button id="mAdd" aria-pressed="true">＋ Wand</button>
+    <button id="mSub" aria-pressed="false">− Nicht Wand</button>
+    <button id="undo">Letzten Punkt weg</button>
+    <button id="clear">Neu</button>
+  </div>
+  <div class="wrap" id="wrap"><canvas id="cv"></canvas><canvas id="ov"></canvas></div>
+  <p class="hint">Auf die Wand tippen. Wenn Möbel oder Decke mit drin sind: «− Nicht Wand» wählen und dort tippen.</p>
+</div>
+
+<div class="card">
+  <table id="res">
+    <tr><td>Gerät / Rechenart</td><td id="rDev">–</td></tr>
+    <tr><td>Modell laden</td><td id="rLoad">–</td></tr>
+    <tr><td>Foto analysieren (einmal pro Foto)</td><td id="rEnc">–</td></tr>
+    <tr><td>Maske nach Antippen</td><td id="rDec">–</td></tr>
+    <tr><td>Erkannte Wandfläche</td><td id="rCov">–</td></tr>
+    <tr><td>Sicherheit des Modells</td><td id="rScore">–</td></tr>
+  </table>
+  <p class="hint">Bitte mit 3–4 echten Kundenfotos testen und mir die Werte und Eindrücke schicken.</p>
+</div>
+
+<script type="module">
+const $=s=>document.querySelector(s);
+const st=t=>$('#status').textContent=t;
+let T,model,proc,img=null,inputs=null,emb=null,pts=[],mode=1,busy=false,dev='wasm';
+const cv=$('#cv'),ov=$('#ov'),ctx=cv.getContext('2d'),octx=ov.getContext('2d');
+const ms=t=>t<1000?Math.round(t)+' ms':(t/1000).toFixed(1)+' s';
+
+$('#load').onclick=async()=>{
+  $('#load').disabled=true;const t0=performance.now();
+  try{
+    st('Lade KI-Bibliothek …');
+    T=await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.3');
+    const files={};const prog=p=>{if(p.status==='progress'&&p.total){files[p.file]=[p.loaded,p.total];let a=0,b=0;for(const k in files){a+=files[k][0];b+=files[k][1]}$('#prog').style.width=Math.round(a/b*100)+'%';st(`Lade Modell … ${(a/1048576).toFixed(1)} / ${(b/1048576).toFixed(1)} MB`)}};
+    const id='Xenova/slimsam-77-uniform';
+    let gpu=false;try{gpu=!!(navigator.gpu&&await navigator.gpu.requestAdapter())}catch(e){}
+    try{
+      if(gpu){model=await T.SamModel.from_pretrained(id,{device:'webgpu',dtype:'fp16',progress_callback:prog});dev='WebGPU (Grafikchip)'}
+      else throw 0;
+    }catch(e){model=await T.SamModel.from_pretrained(id,{dtype:'fp32',progress_callback:prog});dev='WASM (Prozessor)'}
+    proc=await T.AutoProcessor.from_pretrained(id);
+    $('#prog').style.width='100%';$('#rDev').textContent=dev;$('#rLoad').textContent=ms(performance.now()-t0);
+    st('Modell bereit. Jetzt ein Foto wählen.');
+  }catch(e){console.error(e);st('Fehler beim Laden: '+(e&&e.message||e));$('#load').disabled=false}
+};
+
+$('#file').onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;if(!model){st('Bitte zuerst «KI-Modell laden» tippen.');return}
+  const url=URL.createObjectURL(f);const im=new Image();await new Promise((r,j)=>{im.onload=r;im.onerror=j;im.src=url}).catch(()=>{});
+  if(!im.naturalWidth){st('Dieses Bildformat kann der Browser nicht öffnen (z. B. HEIC am PC). Bitte als JPG versuchen.');return}
+  const k=Math.min(1,1600/Math.max(im.naturalWidth,im.naturalHeight));cv.width=ov.width=Math.round(im.naturalWidth*k);cv.height=ov.height=Math.round(im.naturalHeight*k);
+  ctx.drawImage(im,0,0,cv.width,cv.height);octx.clearRect(0,0,ov.width,ov.height);$('#work').hidden=false;pts=[];
+  st('Foto wird analysiert …');busy=true;const t0=performance.now();
+  try{
+    img=await T.RawImage.fromCanvas?await T.RawImage.fromCanvas(cv):await T.RawImage.fromURL(cv.toDataURL('image/jpeg',.92));
+    inputs=await proc(img);emb=await model.get_image_embeddings(inputs);
+    $('#rEnc').textContent=ms(performance.now()-t0);st('Fertig analysiert. Jetzt auf die Wand tippen.');
+  }catch(e){console.error(e);st('Fehler bei der Analyse: '+(e&&e.message||e))}
+  busy=false;
+};
+
+async function decode(){
+  octx.clearRect(0,0,ov.width,ov.height);if(!pts.length||!emb)return;busy=true;const t0=performance.now();
+  try{
+    const rs=inputs.reshaped_input_sizes[0];
+    const P=pts.map(p=>[p.x*rs[1],p.y*rs[0]]),L=pts.map(p=>BigInt(p.l));
+    const input_points=new T.Tensor('float32',P.flat(),[1,1,P.length,2]);
+    const input_labels=new T.Tensor('int64',L,[1,1,L.length]);
+    const out=await model({...emb,input_points,input_labels});
+    const masks=await proc.post_process_masks(out.pred_masks,inputs.original_sizes,inputs.reshaped_input_sizes);
+    const sc=out.iou_scores.data;let bi=0;for(let i=1;i<sc.length;i++)if(sc[i]>sc[bi])bi=i;
+    const m=masks[0],[,,H,W]=m.dims,d=m.data,off=bi*H*W;
+    const id=octx.createImageData(W,H);let n=0;
+    for(let i=0;i<H*W;i++){if(d[off+i]){n++;const j=i*4;id.data[j]=197;id.data[j+1]=167;id.data[j+2]=122;id.data[j+3]=130}}
+    const tmp=document.createElement('canvas');tmp.width=W;tmp.height=H;tmp.getContext('2d').putImageData(id,0,0);
+    octx.drawImage(tmp,0,0,ov.width,ov.height);
+    pts.forEach(p=>{octx.beginPath();octx.arc(p.x*ov.width,p.y*ov.height,Math.max(6,ov.width/120),0,7);octx.fillStyle=p.l?'#7fbf8a':'#e08a7a';octx.fill();octx.lineWidth=2;octx.strokeStyle='#fff';octx.stroke()});
+    $('#rDec').textContent=ms(performance.now()-t0);$('#rCov').textContent=Math.round(n/(H*W)*100)+' % des Bildes';$('#rScore').textContent=Math.round(sc[bi]*100)+' %';
+    st('Maske fertig. Weitere Punkte setzen, um sie zu verbessern.');
+  }catch(e){console.error(e);st('Fehler bei der Maske: '+(e&&e.message||e))}
+  busy=false;
+}
+$('#wrap').addEventListener('pointerup',e=>{if(busy||!emb)return;const r=cv.getBoundingClientRect();pts.push({x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height,l:mode});decode()});
+$('#mAdd').onclick=()=>{mode=1;$('#mAdd').setAttribute('aria-pressed','true');$('#mSub').setAttribute('aria-pressed','false')};
+$('#mSub').onclick=()=>{mode=0;$('#mSub').setAttribute('aria-pressed','true');$('#mAdd').setAttribute('aria-pressed','false')};
+$('#undo').onclick=()=>{pts.pop();decode()};
+$('#clear').onclick=()=>{pts=[];decode()};
+</script>
+</body>
+</html>
