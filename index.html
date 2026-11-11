@@ -584,7 +584,7 @@ body.fs.tools .toolsbtn{right:min(380px,88vw)}
   <div class="v3dtop"><div class="v3dtt"><b>3D-Ansicht</b><span id="v3dHint"></span></div><div class="v3dbtns"><button class="sbtn" id="v3dReset" type="button">Ansicht zurück</button><button class="sbtn" id="v3dClose" type="button">✕ Schliessen</button></div></div>
   <div class="v3dbusy" id="v3dBusy" hidden>Oberfläche wird berechnet …</div>
   <div class="v3dbar">
-    <label class="v3dctl"><span>Licht <output id="v3dLOut"></output></span><input type="range" id="v3dL" min="-85" max="85" value="-55"></label>
+    <label class="v3dctl"><span>Licht <output id="v3dLOut"></output></span><input type="range" id="v3dL" min="-85" max="85" value="-25"></label>
     <div class="v3dchips"><button class="chipb" id="v3dAnim" type="button" aria-pressed="false">Licht wandern lassen</button><button class="chipb" id="v3dLow" type="button" aria-pressed="true">Streiflicht</button></div>
     <label class="v3dctl"><span>Struktur <output id="v3dSOut"></output></span><input type="range" id="v3dS" min="0" max="200" value="100"></label>
   </div>
@@ -1637,7 +1637,7 @@ const V3=(function(){
 
   /* ---------- WebGL ---------- */
   let cvs=null,g=null,progW=null,progP=null,progC=null,bufC=null,nC=0,bufW=null,bufQ=null,nW=0,ready=false,raf=0,info=null;
-  const v={yaw:-.32,pitch:.07,dist:0,zoom:1,lAng:-55,low:true,anim:false,amp:1,dir:1};
+  const v={yaw:-.32,pitch:.07,dist:0,zoom:1,lAng:-25,low:false,anim:false,amp:1,dir:1};
   const COMMON=`precision highp float;
 uniform sampler2D tMac,tMat,tMic,tLay,tLM,tPh;uniform vec3 uCol,uCam,uLight;uniform float uMacG,uMacA,uMicA,uMicRep,uAmp,uBaseOn,uPhotoAlb,uLS;uniform vec2 uWall;uniform mat3 uFlat2Ph;uniform vec2 uPh;
 vec3 lin(vec3 c){return pow(c,vec3(2.2));}
@@ -1645,6 +1645,7 @@ float Hh(vec2 uv){vec4 lm=texture2D(tLM,uv);float b=(texture2D(tMac,uv).a*uMacA+
 vec3 env(vec3 r,float ro){float up=r.y*.5+.5;vec3 c=mix(vec3(.10,.09,.08),vec3(1.05,1.0,.92),smoothstep(.2,1.,up));
   float win=pow(max(dot(r,normalize(vec3(-.6,.45,.66))),0.),mix(80.,4.,ro));c+=vec3(1.8,1.7,1.5)*win*(1.-ro*.7);return mix(c,vec3(.45,.42,.38),ro*.6);}
 vec3 photoAt(vec2 uv){vec3 p=uFlat2Ph*vec3(uv.x,1.-uv.y,1.);vec2 q=p.xy/p.z;return texture2D(tPh,vec2(q.x/uPh.x,1.-q.y/uPh.y)).rgb;}
+uniform float uSoft;
 vec3 wallCol(vec2 uv,vec3 wp){
   float e=.0005;vec2 mm=uWall*1000.;float h0=Hh(uv),hx=Hh(uv+vec2(e,0.))-Hh(uv-vec2(e,0.)),hy=Hh(uv+vec2(0.,e))-Hh(uv-vec2(0.,e));
   vec3 N=normalize(vec3(-hx/(2.*e*mm.x),-hy/(2.*e*mm.y),1.));
@@ -1659,10 +1660,10 @@ vec3 wallCol(vec2 uv,vec3 wp){
   float NdL=max(dot(N,L),0.),NdV=max(dot(N,V),.001),NdH=max(dot(N,H),0.),VdH=max(dot(V,H),0.);
   float a=max(ro*ro,.002),a2=a*a,dd=NdH*NdH*(a2-1.)+1.,D=a2/(3.14159*dd*dd);float kk=(ro+1.)*(ro+1.)/8.,G=(NdL/(NdL*(1.-kk)+kk))*(NdV/(NdV*(1.-kk)+kk));
   vec3 F0=mix(vec3(.04),alb,me),F=F0+(1.-F0)*pow(1.-VdH,5.);vec3 spec=D*G*F/max(4.*NdL*NdV,.001);
-  float dist=length(uLight-wp)/uLS;vec3 rad=vec3(1.,.95,.87)*7.5/(dist*dist*.35+.6);
+  float dist=length(uLight-wp)/uLS;vec3 rad=vec3(1.,.95,.87)*mix(7.5/(dist*dist*.35+.6),3.3/(dist*dist*.07+.75),uSoft);
   vec3 col=((1.-F)*(1.-me)*alb/3.14159+spec)*rad*NdL*sh;
   vec3 R=reflect(-V,N);vec3 Fe=F0+(max(vec3(1.-ro),F0)-F0)*pow(1.-NdV,5.);
-  col+=alb*(1.-me)*mix(vec3(.10,.10,.11),vec3(.26,.25,.23),N.y*.5+.5)*(.55+.45*sh);col+=env(R,ro)*Fe*(.35+.95*me)*(.6+.4*sh);
+  col+=alb*(1.-me)*mix(vec3(.10,.10,.11),vec3(.26,.25,.23),N.y*.5+.5)*(.55+.45*sh)*(1.+uSoft*.2);col+=env(R,ro)*Fe*(.35+.95*me)*(.6+.4*sh);
   return col*(2.51*col+.03)/(col*(2.43*col+.59)+.14);}
 `;
   const VSW=`attribute vec3 aP;attribute vec3 aN;attribute vec2 aUV;attribute float aF;uniform mat4 uMVP;varying vec3 vP;varying vec3 vN;varying vec2 vUV;varying float vF;
@@ -1780,7 +1781,7 @@ void main(){vec2 q=(gl_FragCoord.xy-uScr*.5)*uS;q.y=-q.y;vec3 r=uRot*vec3(q,1.);
     [['tMac',0],['tMat',1],['tMic',2],['tLay',3],['tLM',4],['tPh',5],['tMask',6]].forEach(([n,i])=>setU(p,n,'uniform1i',i));
     {const cc=hexLin(state.base.on?state.base.color:'#f0eee8');if(S.P.rgb){const m=hexLin(IRON_DEF);setU(p,'uCol','uniform3fv',cc.map((v,i)=>Math.min(3,v/m[i])))}else setU(p,'uCol','uniform3fv',cc);setU(p,'uMacG','uniform1f',S.P.rgb?1:0)}setU(p,'uMacA','uniform1f',S.P.macroAmp);setU(p,'uMicA','uniform1f',S.P.microAmp);setU(p,'uMicRep','uniform1f',S.P.microRep);
     setU(p,'uAmp','uniform1f',v.amp);setU(p,'uBaseOn','uniform1f',state.base.on?1:0);setU(p,'uPhotoAlb','uniform1f',(state.src==='foto'&&!state.base.on)?1:0);setU(p,'uWall','uniform2f',M.wm,M.hm);setU(p,'uLS','uniform1f',ls);
-    const a=v.lAng*Math.PI/180,zl=v.low?.55:1.6;setU(p,'uLight','uniform3fv',[Math.sin(a)*2.2*ls,M.hm*.42,Math.max(.15,Math.cos(a)*zl)*ls]);
+    const a=v.lAng*Math.PI/180,zl=v.low?.55:3.2;setU(p,'uLight','uniform3fv',[Math.sin(a)*(v.low?2.2:1.6)*ls,v.low?M.hm*.42:M.hm*.85,Math.max(.15,Math.cos(a)*zl)*ls]);setU(p,'uSoft','uniform1f',v.low?0:1);
     setU(p,'uPh','uniform2f',PW,PH);if(!homo)homo=computeHomo();const sc=[W,0,0,0,H,0,0,0,1];setU(p,'uFlat2Ph','uniformMatrix3fv',false,T3(mul3(homo,sc)))}
   function draw(){if(!raf)raf=requestAnimationFrame(frame)}
   function frame(){raf=0;if(!ready||$('#v3d').hidden)return;const dpr=Math.min(window.devicePixelRatio||1,1.5),W2=Math.max(2,Math.round(cvs.clientWidth*dpr)),H2=Math.max(2,Math.round(cvs.clientHeight*dpr));
@@ -1791,7 +1792,7 @@ void main(){vec2 q=(gl_FragCoord.xy-uScr*.5)*uS;q.y=-q.y;vec3 r=uRot*vec3(q,1.);
       setU(progW,'uFloor','uniform3fv',[.30,.22,.15]);if(!texs.floor&&floorImg.complete&&floorImg.naturalWidth){tex('floor',7,0,0,floorImg,true,true)}setU(progW,'tFloor','uniform1i',7);setU(progW,'uFlOn','uniform1f',texs.floor?1:0);setU(progW,'uSide','uniform3fv',[.62,.6,.57]);setU(progW,'uKCol','uniform3fv',hexLin((state.scene&&state.scene.kColor)||'#3c3f44').map(v=>v*.92));g.drawArrays(g.TRIANGLES,0,nW)}
     else{g.useProgram(progC);g.bindBuffer(g.ARRAY_BUFFER,bufC);[['aP',3,0],['aN',3,12],['aUV',2,24],['aF',1,32]].forEach(([n,sz,o])=>{const l=g.getAttribLocation(progC,n);if(l<0)return;g.enableVertexAttribArray(l);g.vertexAttribPointer(l,sz,g.FLOAT,false,36,o)});
       common(progC);const d=4.1/v.zoom,cam=[d*Math.sin(v.yaw)*Math.cos(v.pitch),d*Math.sin(v.pitch),d*Math.cos(v.yaw)*Math.cos(v.pitch)];
-      const a=v.lAng*Math.PI/180,zl=v.low?.5:1.6;setU(progC,'uLight','uniform3fv',[Math.sin(a)*2.2,1.0,Math.max(.15,Math.cos(a)*zl)]);setU(progC,'uLS','uniform1f',1);
+      const a=v.lAng*Math.PI/180,zl=v.low?.5:1.6;setU(progC,'uLight','uniform3fv',[Math.sin(a)*2.2,1.0,Math.max(.15,Math.cos(a)*zl)]);setU(progC,'uLS','uniform1f',1);setU(progC,'uSoft','uniform1f',0);
       setU(progC,'uCam','uniform3fv',cam);setU(progC,'uMVP','uniformMatrix4fv',false,new Float32Array(mul4(persp(.62,W2/H2,.05,50),look(cam,[0,0,0],[0,1,0]))));
       if(!homoInv)homo=computeHomo();const isc=[1/W,0,0,0,1/H,0,0,0,1];setU(progC,'uPh2Flat','uniformMatrix3fv',false,T3(mul3(isc,homoInv)));setU(progC,'uMeanL','uniform1f',meanL);
       g.drawArrays(g.TRIANGLES,0,nC)}
