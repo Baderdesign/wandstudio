@@ -31,9 +31,10 @@ table{width:100%;border-collapse:collapse;font-size:13px}td{padding:5px 0;border
 <p class="sub">Test: Wand per Fingertipp mit Meta Segment Anything (SlimSAM) erkennen – läuft direkt auf dem Gerät, ohne Server.</p>
 
 <div class="card">
-  <div class="row"><button class="primary" id="load">1 · KI-Modell laden</button><label class="btn" id="pick">2 · Foto wählen<input type="file" id="file" accept="image/*"></label></div>
+  <div class="row"><button class="primary" id="load">1 · KI-Modell laden</button><label class="btn" style="font-weight:500"><input type="checkbox" id="fast" style="display:inline;width:20px;height:20px;accent-color:#C5A77A"> Schnellmodus (WebGPU)</label><label class="btn" id="pick">2 · Foto wählen<input type="file" id="file" accept="image/*"></label></div>
   <div class="bar"><i id="prog"></i></div>
-  <p id="status">Noch nicht geladen. Beim ersten Mal werden ca. 10–30 MB geladen (danach im Browser gespeichert).</p>
+  <p id="status">Noch nicht geladen. Standard ist der Sparmodus (wenig Speicher, fürs iPhone empfohlen).</p>
+  <p id="crash" class="hint" style="color:var(--bad)" hidden></p>
 </div>
 
 <div class="card" id="work" hidden>
@@ -58,10 +59,16 @@ table{width:100%;border-collapse:collapse;font-size:13px}td{padding:5px 0;border
   </table>
   <p class="hint">Bitte mit 3–4 echten Kundenfotos testen und mir die Werte und Eindrücke schicken.</p>
 </div>
+<div class="card"><b style="font-size:13px">Protokoll</b><pre id="log" style="white-space:pre-wrap;font-size:11.5px;color:var(--muted);margin:6px 0 0;max-height:220px;overflow:auto"></pre></div>
 
 <script type="module">
 const $=s=>document.querySelector(s);
-const st=t=>$('#status').textContent=t;
+const LOG=[];const log=t=>{const l=new Date().toLocaleTimeString('de-CH')+'  '+t;LOG.push(l);$('#log').textContent=LOG.join('\n')};
+const st=t=>{$('#status').textContent=t;log(t)};
+const stage=s=>{try{s?localStorage.setItem('samStage',s):localStorage.removeItem('samStage')}catch(e){}};
+window.addEventListener('error',e=>log('FEHLER: '+(e.message||e)));window.addEventListener('unhandledrejection',e=>log('FEHLER: '+((e.reason&&e.reason.message)||e.reason)));
+{let s=null;try{s=localStorage.getItem('samStage')}catch(e){}if(s){$('#crash').hidden=false;$('#crash').textContent='Beim letzten Versuch ist die Seite abgestürzt bei: «'+s+'». Meist ist das zu wenig Arbeitsspeicher. Bitte andere Apps/Tabs schliessen und nochmals versuchen.';log('Letzter Absturz bei: '+s);stage(null)}}
+log('Gerät: '+navigator.userAgent.replace(/^Mozilla\/5.0 /,'').slice(0,120));log('Speicher-Hinweis: '+(navigator.deviceMemory?navigator.deviceMemory+' GB':'unbekannt')+', WebGPU: '+('gpu' in navigator?'vorhanden':'nein'));
 let T,model,proc,img=null,inputs=null,emb=null,pts=[],mode=1,busy=false,dev='wasm';
 const cv=$('#cv'),ov=$('#ov'),ctx=cv.getContext('2d'),octx=ov.getContext('2d');
 const ms=t=>t<1000?Math.round(t)+' ms':(t/1000).toFixed(1)+' s';
@@ -73,34 +80,35 @@ $('#load').onclick=async()=>{
     T=await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.3');
     const files={};const prog=p=>{if(p.status==='progress'&&p.total){files[p.file]=[p.loaded,p.total];let a=0,b=0;for(const k in files){a+=files[k][0];b+=files[k][1]}$('#prog').style.width=Math.round(a/b*100)+'%';st(`Lade Modell … ${(a/1048576).toFixed(1)} / ${(b/1048576).toFixed(1)} MB`)}};
     const id='Xenova/slimsam-77-uniform';
-    let gpu=false;try{gpu=!!(navigator.gpu&&await navigator.gpu.requestAdapter())}catch(e){}
-    try{
-      if(gpu){model=await T.SamModel.from_pretrained(id,{device:'webgpu',dtype:'fp16',progress_callback:prog});dev='WebGPU (Grafikchip)'}
-      else throw 0;
-    }catch(e){model=await T.SamModel.from_pretrained(id,{dtype:'fp32',progress_callback:prog});dev='WASM (Prozessor)'}
-    proc=await T.AutoProcessor.from_pretrained(id);
+    try{T.env.backends.onnx.wasm.numThreads=1}catch(e){}
+    let gpu=false;if($('#fast').checked){try{gpu=!!(navigator.gpu&&await navigator.gpu.requestAdapter())}catch(e){}if(!gpu)log('WebGPU nicht verfügbar – Sparmodus.')}
+    stage('Modell laden');
+    const tries=gpu?[['webgpu','fp16','WebGPU (Grafikchip)'],['wasm','q8','Sparmodus (Prozessor, komprimiert)'],['wasm','fp32','Prozessor (voll)']]:[['wasm','q8','Sparmodus (Prozessor, komprimiert)'],['wasm','fp32','Prozessor (voll)']];
+    for(const [d,q,name] of tries){try{log('Versuche: '+name);model=await T.SamModel.from_pretrained(id,{device:d,dtype:q,progress_callback:prog});dev=name;break}catch(e){log('Nicht möglich ('+name+'): '+(e&&e.message||e))}}
+    if(!model)throw new Error('Modell konnte in keiner Variante geladen werden');
+    proc=await T.AutoProcessor.from_pretrained(id);stage(null);
     $('#prog').style.width='100%';$('#rDev').textContent=dev;$('#rLoad').textContent=ms(performance.now()-t0);
     st('Modell bereit. Jetzt ein Foto wählen.');
-  }catch(e){console.error(e);st('Fehler beim Laden: '+(e&&e.message||e));$('#load').disabled=false}
+  }catch(e){console.error(e);stage(null);st('Fehler beim Laden: '+(e&&e.message||e));$('#load').disabled=false}
 };
 
 $('#file').onchange=async e=>{
   const f=e.target.files[0];if(!f)return;if(!model){st('Bitte zuerst «KI-Modell laden» tippen.');return}
   const url=URL.createObjectURL(f);const im=new Image();await new Promise((r,j)=>{im.onload=r;im.onerror=j;im.src=url}).catch(()=>{});
   if(!im.naturalWidth){st('Dieses Bildformat kann der Browser nicht öffnen (z. B. HEIC am PC). Bitte als JPG versuchen.');return}
-  const k=Math.min(1,1600/Math.max(im.naturalWidth,im.naturalHeight));cv.width=ov.width=Math.round(im.naturalWidth*k);cv.height=ov.height=Math.round(im.naturalHeight*k);
+  const k=Math.min(1,1024/Math.max(im.naturalWidth,im.naturalHeight));cv.width=ov.width=Math.round(im.naturalWidth*k);cv.height=ov.height=Math.round(im.naturalHeight*k);
   ctx.drawImage(im,0,0,cv.width,cv.height);octx.clearRect(0,0,ov.width,ov.height);$('#work').hidden=false;pts=[];
-  st('Foto wird analysiert …');busy=true;const t0=performance.now();
+  st('Foto wird analysiert …');busy=true;stage('Foto analysieren');const t0=performance.now();
   try{
     img=await T.RawImage.fromCanvas?await T.RawImage.fromCanvas(cv):await T.RawImage.fromURL(cv.toDataURL('image/jpeg',.92));
     inputs=await proc(img);emb=await model.get_image_embeddings(inputs);
-    $('#rEnc').textContent=ms(performance.now()-t0);st('Fertig analysiert. Jetzt auf die Wand tippen.');
-  }catch(e){console.error(e);st('Fehler bei der Analyse: '+(e&&e.message||e))}
+    $('#rEnc').textContent=ms(performance.now()-t0);stage(null);st('Fertig analysiert. Jetzt auf die Wand tippen.');
+  }catch(e){console.error(e);stage(null);st('Fehler bei der Analyse: '+(e&&e.message||e))}
   busy=false;
 };
 
 async function decode(){
-  octx.clearRect(0,0,ov.width,ov.height);if(!pts.length||!emb)return;busy=true;const t0=performance.now();
+  octx.clearRect(0,0,ov.width,ov.height);if(!pts.length||!emb)return;busy=true;stage('Maske berechnen');const t0=performance.now();
   try{
     const rs=inputs.reshaped_input_sizes[0];
     const P=pts.map(p=>[p.x*rs[1],p.y*rs[0]]),L=pts.map(p=>BigInt(p.l));
@@ -116,8 +124,8 @@ async function decode(){
     octx.drawImage(tmp,0,0,ov.width,ov.height);
     pts.forEach(p=>{octx.beginPath();octx.arc(p.x*ov.width,p.y*ov.height,Math.max(6,ov.width/120),0,7);octx.fillStyle=p.l?'#7fbf8a':'#e08a7a';octx.fill();octx.lineWidth=2;octx.strokeStyle='#fff';octx.stroke()});
     $('#rDec').textContent=ms(performance.now()-t0);$('#rCov').textContent=Math.round(n/(H*W)*100)+' % des Bildes';$('#rScore').textContent=Math.round(sc[bi]*100)+' %';
-    st('Maske fertig. Weitere Punkte setzen, um sie zu verbessern.');
-  }catch(e){console.error(e);st('Fehler bei der Maske: '+(e&&e.message||e))}
+    stage(null);st('Maske fertig. Weitere Punkte setzen, um sie zu verbessern.');
+  }catch(e){console.error(e);stage(null);st('Fehler bei der Maske: '+(e&&e.message||e))}
   busy=false;
 }
 $('#wrap').addEventListener('pointerup',e=>{if(busy||!emb)return;const r=cv.getBoundingClientRect();pts.push({x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height,l:mode});decode()});
