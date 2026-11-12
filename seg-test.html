@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Wandstudio KI-Vergleich</title>
+<style>
+:root{--bg:#202225;--panel:#292C30;--card:#32363B;--fg:#F2F0EB;--muted:#A5A8AC;--line:rgba(255,255,255,.1);--accent:#C5A77A;--ok:#7fbf8a;--bad:#e08a7a;color-scheme:dark}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;padding:max(12px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 32px max(16px,env(safe-area-inset-left));max-width:900px;margin-inline:auto}
+h1{font-size:18px;letter-spacing:.12em;margin:4px 0 2px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button,label.btn{font:inherit;font-size:14px;font-weight:600;min-height:44px;padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+button[aria-pressed=true]{background:var(--accent);color:#202225;border-color:var(--accent)}
+button:disabled{opacity:.4;cursor:default}
+label.btn input{display:none}
+.primary,label.btn.primary{background:var(--accent);color:#202225;border-color:var(--accent)}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg button{flex-direction:column;align-items:flex-start;text-align:left;min-height:64px}
+.seg small{font-weight:400;font-size:12px;opacity:.8}
+#status{font-size:13px;color:var(--muted);white-space:pre-line;margin:10px 0 0}
+.wrap{position:relative;width:fit-content;max-width:100%;margin:0 auto;touch-action:none;border-radius:8px;overflow:hidden;background:#111}
+.wrap canvas{display:block;max-width:100%;max-height:72vh;width:auto;height:auto}
+#ov{position:absolute;inset:0;pointer-events:none;width:100%;height:100%}
+table{width:100%;border-collapse:collapse;font-size:13px}td{padding:6px 0;border-bottom:1px solid var(--line)}td:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.hint{color:var(--muted);font-size:13px;margin:8px 0 0}
+.bar{height:6px;border-radius:3px;background:var(--panel);overflow:hidden;margin-top:10px}.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:8px}.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+pre{white-space:pre-wrap;font-size:12px;color:var(--muted);margin:8px 0 0}
+</style>
+</head>
+<body>
+<h1>WANDSTUDIO · KI-VERGLEICH</h1>
+<p class="sub">Zwei kleine KI-Modelle zur Wanderkennung, beide laufen direkt auf dem Gerät. Die App wird dabei nicht verändert.</p>
+
+<div class="card">
+  <div class="row"><label class="btn primary" id="pick">1 · Foto wählen<input type="file" id="file" accept="image/*"></label></div>
+  <p class="hint" style="margin-top:12px">2 · Modell wählen:</p>
+  <div class="seg" style="margin-top:6px">
+    <button id="mA" disabled>A · MediaPipe<small>Auf die Wand tippen (wie bisher)</small></button>
+    <button id="mB" disabled>B · SegFormer<small>Erkennt Wand, Fenster, Türen selbst</small></button>
+  </div>
+  <div class="bar"><i id="prog"></i></div>
+  <p id="status">Zuerst ein Foto wählen.</p>
+</div>
+
+<div class="card" id="work" hidden>
+  <div class="row" id="tapCtl" hidden style="margin-bottom:10px"><button id="pAdd" aria-pressed="true">＋ Wand</button><button id="pSub" aria-pressed="false">− Nicht Wand</button><button id="pUndo">Letzten Punkt weg</button></div>
+  <div class="wrap" id="wrap"><canvas id="cv"></canvas><canvas id="ov"></canvas></div>
+  <div class="legend"><span><i style="background:#58c27d"></i>Wand</span><span id="lgHole" hidden><i style="background:#e0675a"></i>Fenster / Tür / Möbel (Aussparung)</span></div>
+</div>
+
+<div class="card">
+  <b>Ergebnisse</b>
+  <table id="res"><tr><td>Gerät</td><td id="dev"></td></tr></table>
+  <p class="hint">Bitte einen Screenshot von dieser Tabelle und vom Bild schicken. Wenn die Seite abstürzt: neu öffnen – oben steht dann, wo es passiert ist.</p>
+  <details><summary class="hint" style="cursor:pointer">Protokoll</summary><pre id="log"></pre></details>
+</div>
+
+<script type="module">
+const $=s=>document.querySelector(s);
+const L=[];const log=t=>{L.push(new Date().toLocaleTimeString('de-CH')+'  '+t);$('#log').textContent=L.join('\n')};
+const st=t=>{$('#status').textContent=t;log(t)};
+const row=(k,v)=>{let r=[...$('#res').rows].find(x=>x.cells[0].textContent===k);if(!r){r=$('#res').insertRow();r.insertCell();r.insertCell();r.cells[0].textContent=k}r.cells[1].textContent=v};
+const prog=p=>{$('#prog').style.width=Math.round(p*100)+'%'};
+window.addEventListener('error',e=>log('FEHLER: '+e.message));window.addEventListener('unhandledrejection',e=>log('FEHLER: '+((e.reason&&e.reason.message)||e.reason)));
+const ua=navigator.userAgent;$('#dev').textContent=(/iPhone|iPad/.test(ua)?'iPhone/iPad':/Android/.test(ua)?'Android':/Windows/.test(ua)?'Windows':/Mac/.test(ua)?'Mac':'?')+(navigator.deviceMemory?' · '+navigator.deviceMemory+' GB':'')+(/CriOS|FxiOS|EdgiOS/.test(ua)?' · fremder Browser':'');
+
+/* Absturz-Merker */
+const RUN='ws-seg-run';
+try{const r=JSON.parse(localStorage.getItem(RUN)||'null');if(r&&Date.now()-r.t<10*60e3){row('Letzter Versuch','abgestürzt bei '+r.m+' ('+r.stage+')');log('Letzter Versuch abgestürzt: '+r.m+' / '+r.stage)}}catch(e){}
+const mark=(m,stage)=>{try{stage?localStorage.setItem(RUN,JSON.stringify({t:Date.now(),m,stage})):localStorage.removeItem(RUN)}catch(e){}};
+
+const cv=$('#cv'),ov=$('#ov'),ctx=cv.getContext('2d'),octx=ov.getContext('2d');
+let W=0,H=0,cur=null,busy=false,pts=[],pmode=1;
+let A=null,B=null; // geladene Modelle
+let maskWall=null,maskHole=null;
+
+$('#file').onchange=async e=>{const f=e.target.files[0];if(!f)return;
+  const url=URL.createObjectURL(f);const im=new Image();await new Promise((r,j)=>{im.onload=r;im.onerror=j;im.src=url}).catch(()=>{});
+  if(!im.naturalWidth){st('Foto konnte nicht geöffnet werden.');return}
+  const k=Math.min(1,1024/Math.max(im.naturalWidth,im.naturalHeight));W=Math.round(im.naturalWidth*k);H=Math.round(im.naturalHeight*k);
+  cv.width=ov.width=W;cv.height=ov.height=H;ctx.drawImage(im,0,0,W,H);URL.revokeObjectURL(url);
+  $('#work').hidden=false;$('#mA').disabled=$('#mB').disabled=false;pts=[];maskWall=maskHole=null;draw();
+  row('Foto',W+' × '+H+' px');st('Foto geladen. Jetzt Modell A oder B wählen.');if(cur)choose(cur)};
+
+$('#mA').onclick=()=>choose('A');$('#mB').onclick=()=>choose('B');
+$('#pAdd').onclick=()=>{pmode=1;$('#pAdd').setAttribute('aria-pressed','true');$('#pSub').setAttribute('aria-pressed','false')};
+$('#pSub').onclick=()=>{pmode=0;$('#pSub').setAttribute('aria-pressed','true');$('#pAdd').setAttribute('aria-pressed','false')};
+$('#pUndo').onclick=()=>{pts.pop();runA()};
+
+async function choose(m){if(busy||!W)return;cur=m;$('#mA').setAttribute('aria-pressed',m==='A');$('#mB').setAttribute('aria-pressed',m==='B');
+  pts=[];maskWall=maskHole=null;draw();$('#tapCtl').hidden=m!=='A';$('#lgHole').hidden=m!=='B';
+  if(m==='A'){await loadA();if(A)st('Auf die Wand tippen. Mehrere Punkte erweitern die Fläche, «− Nicht Wand» nimmt Bereiche weg.')}
+  else{await loadB();if(B)await runB()}}
+
+/* ---------- A: MediaPipe Interactive Segmenter ---------- */
+const MP='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+const MPM='https://storage.googleapis.com/mediapipe-models/interactive_segmenter/magic_touch/float32/1/magic_touch.tflite';
+async function loadA(){if(A)return;busy=true;const t0=performance.now();prog(.1);
+  try{mark('A','Laden');st('Modell A wird geladen …');
+    const V=await import(MP+'/vision_bundle.mjs');prog(.4);const fs=await V.FilesetResolver.forVisionTasks(MP+'/wasm');prog(.6);
+    for(const d of ['GPU','CPU']){try{A=await V.InteractiveSegmenter.createFromOptions(fs,{baseOptions:{modelAssetPath:MPM,delegate:d},outputCategoryMask:true,outputConfidenceMasks:false});A._d=d;break}catch(e){log('A '+d+' nicht möglich: '+(e&&e.message||e))}}
+    if(!A)throw new Error('Modell A nicht geladen');
+    prog(1);row('A · Laden',((performance.now()-t0)/1000).toFixed(1)+' s ('+(A._d==='GPU'?'Grafikchip':'Prozessor')+')');mark(null)}
+  catch(e){mark(null);st('Modell A konnte nicht geladen werden: '+(e&&e.message||e))}
+  busy=false}
+function segA(x,y){return new Promise((res,rej)=>{try{A.segment(cv,{keypoint:{x,y}},r=>{try{const m=r.categoryMask,w=m.width,h=m.height,d=m.getAsUint8Array().slice();
+  const sel=d[Math.min(h-1,Math.round(y*h))*w+Math.min(w-1,Math.round(x*w))];const out=new Uint8Array(w*h);for(let i=0;i<w*h;i++)out[i]=d[i]===sel?1:0;res({w,h,d:out})}catch(e){rej(e)}})}catch(e){rej(e)}})}
+async function runA(){if(!A||busy)return;if(!pts.length){maskWall=null;draw();return}busy=true;const t0=performance.now();
+  try{mark('A','Analyse');let acc=null;
+    for(const p of pts){const m=await segA(p.x,p.y);if(!acc)acc={w:m.w,h:m.h,d:new Uint8Array(m.w*m.h)};
+      if(p.l)for(let i=0;i<acc.d.length;i++)acc.d[i]|=m.d[i];else for(let i=0;i<acc.d.length;i++)if(m.d[i])acc.d[i]=0}
+    maskWall=acc;mark(null);const s=((performance.now()-t0)/1000).toFixed(2);row('A · Antippen',s+' s ('+pts.length+' Punkt'+(pts.length>1?'e':'')+')');
+    st('Wand markiert. Weitere Punkte setzen oder Modell B vergleichen.')}
+  catch(e){mark(null);st('Fehler bei A: '+(e&&e.message||e))}
+  busy=false;draw()}
+$('#wrap').addEventListener('pointerup',e=>{if(cur!=='A'||!A||busy)return;const b=cv.getBoundingClientRect();pts.push({x:(e.clientX-b.left)/b.width,y:(e.clientY-b.top)/b.height,l:pmode});runA()});
+
+/* ---------- B: SegFormer (ADE20K, 150 Raumklassen) ---------- */
+const TJS='https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.3';
+const HOLES=['windowpane','window','door','cabinet','wardrobe','shelf','painting','picture','mirror','television receiver','screen','bookcase','refrigerator','chest of drawers','sofa','bed','plant','curtain','radiator','stove','kitchen island','sink','counter','lamp','sconce'];
+async function loadB(){if(B)return;busy=true;const t0=performance.now();prog(.05);
+  try{mark('B','Laden');st('Modell B wird geladen …');const T=await import(TJS);try{T.env.backends.onnx.wasm.numThreads=1}catch(e){}
+    const files={};const pc=p=>{if(p.status==='progress'&&p.total){files[p.file]=[p.loaded,p.total];let a=0,b=0;for(const f in files){a+=files[f][0];b+=files[f][1]}prog(a/b);$('#status').textContent=`Modell B wird geladen … ${(a/1048576).toFixed(1)} / ${(b/1048576).toFixed(1)} MB`}};
+    for(const dt of ['q8','fp32']){try{B=await T.pipeline('image-segmentation','Xenova/segformer-b0-finetuned-ade-512-512',{dtype:dt,progress_callback:pc});B._dt=dt;break}catch(e){log('B '+dt+' nicht möglich: '+(e&&e.message||e))}}
+    if(!B)throw new Error('Modell B nicht geladen');B._T=T;
+    prog(1);row('B · Laden',((performance.now()-t0)/1000).toFixed(1)+' s');mark(null)}
+  catch(e){mark(null);st('Modell B konnte nicht geladen werden: '+(e&&e.message||e))}
+  busy=false}
+async function runB(){if(!B||busy)return;busy=true;const t0=performance.now();
+  try{mark('B','Analyse');st('Foto wird analysiert …');const T=B._T;
+    const img=T.RawImage.fromCanvas?await T.RawImage.fromCanvas(cv):await T.RawImage.fromURL(cv.toDataURL('image/jpeg',.9));
+    const out=await B(img);const found=out.map(o=>o.label);log('Gefunden: '+found.join(', '));
+    const w=W,h=H,wall=new Uint8Array(w*h),hole=new Uint8Array(w*h);
+    const take=(o,dst)=>{const m=o.mask,mw=m.width,mh=m.height,d=m.data,ch=m.channels||1;for(let y=0;y<h;y++){const sy=Math.min(mh-1,Math.floor(y*mh/h));for(let x=0;x<w;x++){const sx=Math.min(mw-1,Math.floor(x*mw/w));if(d[(sy*mw+sx)*ch])dst[y*w+x]=1}}};
+    for(const o of out){if(o.label==='wall')take(o,wall);else if(HOLES.includes(o.label))take(o,hole)}
+    maskWall={w,h,d:wall};maskHole={w,h,d:hole};mark(null);
+    const s=((performance.now()-t0)/1000).toFixed(1);row('B · Analyse',s+' s');row('B · Erkannt',found.filter(l=>l==='wall'||HOLES.includes(l)).join(', ')||'keine Wand');
+    st(found.includes('wall')?'Fertig. Grün = Wand, Rot = Aussparungen.':'Keine Wand gefunden – anderes Foto probieren.')}
+  catch(e){mark(null);st('Fehler bei B: '+(e&&e.message||e))}
+  busy=false;draw()}
+
+/* ---------- Anzeige ---------- */
+function paint(m,rgba){if(!m)return;const id=octx.getImageData(0,0,W,H),p=id.data;
+  for(let y=0;y<H;y++){const sy=Math.min(m.h-1,Math.floor(y*m.h/H));for(let x=0;x<W;x++){const sx=Math.min(m.w-1,Math.floor(x*m.w/W));if(m.d[sy*m.w+sx]){const i=(y*W+x)*4;p[i]=rgba[0];p[i+1]=rgba[1];p[i+2]=rgba[2];p[i+3]=rgba[3]}}}
+  octx.putImageData(id,0,0)}
+function draw(){octx.clearRect(0,0,W,H);paint(maskWall,[88,194,125,120]);paint(maskHole,[224,103,90,140]);
+  for(const p of pts){octx.beginPath();octx.arc(p.x*W,p.y*H,Math.max(6,W/90),0,7);octx.fillStyle=p.l?'#58c27d':'#e0675a';octx.fill();octx.lineWidth=2;octx.strokeStyle='#fff';octx.stroke()}}
+</script>
+</body>
+</html>
