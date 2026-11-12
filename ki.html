@@ -19,8 +19,9 @@ button:disabled{opacity:.4}
 .primary{background:var(--accent);color:#202225;border-color:var(--accent)}
 #status{font-size:13.5px;color:var(--muted);margin:8px 0 0;white-space:pre-line}
 .bar{height:5px;border-radius:3px;background:var(--panel);overflow:hidden;margin-top:8px}.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
-.wrap{position:relative;width:100%;touch-action:manipulation;border-radius:8px;overflow:hidden;background:#111}
-.wrap canvas{display:block;width:100%;height:auto}
+.wrap{position:relative;width:fit-content;max-width:100%;margin:0 auto;touch-action:manipulation;border-radius:8px;overflow:hidden;background:#111}
+.wrap canvas{display:block;max-width:100%;max-height:68vh;width:auto;height:auto}
+@media(min-width:900px){body{max-width:1000px;margin:0 auto}}
 #ov{position:absolute;inset:0;pointer-events:none}
 #log{white-space:pre-wrap;font-size:11px;color:var(--muted);margin:0;max-height:140px;overflow:auto}
 details summary{font-size:12.5px;color:var(--muted);cursor:pointer}
@@ -44,12 +45,12 @@ details summary{font-size:12.5px;color:var(--muted);cursor:pointer}
 const $=s=>document.querySelector(s);
 const L=[];const log=t=>{L.push(new Date().toLocaleTimeString('de-CH')+'  '+t);$('#log').textContent=L.join('\n')};
 const st=t=>{$('#status').textContent=t;log(t)};
-const MID='Xenova/slimsam-77-uniform',LIB='https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.3';
+const MP='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14',MPM='https://storage.googleapis.com/mediapipe-models/interactive_segmenter/magic_touch/float32/1/magic_touch.tflite';
 const cv=$('#cv'),ov=$('#ov'),ctx=cv.getContext('2d'),octx=ov.getContext('2d');
-let T,model,proc,inputs,emb,pts=[],mode=1,busy=true,mask=null,PW=0,PH=0;
+let seg=null,pts=[],mode=1,busy=true,mask=null,PW=0,PH=0;
 let leaving=false;
 const back=async()=>{if(leaving)return;leaving=true;runSet(null);try{$('#status').textContent='Zurück zur App …'}catch(e){}
-  try{emb=null;inputs=null;mask=null;if(model&&model.dispose)await model.dispose()}catch(e){}model=null;proc=null;T=null;
+  try{mask=null;if(seg&&seg.close)seg.close()}catch(e){}seg=null;
   try{cv.width=cv.height=1;ov.width=ov.height=1}catch(e){}
   setTimeout(()=>location.replace('./index.html?ki='+Date.now()),250)};
 window.addEventListener('unload',()=>{});
@@ -71,29 +72,27 @@ async function init(){
   PW=w.PW;PH=w.PH;const src=w.img;p=null;
   let im=new Image();await new Promise(r=>{im.onload=r;im.onerror=r;im.src=src});
   const k=Math.min(1,1024/Math.max(PW,PH));cv.width=ov.width=Math.round(PW*k);cv.height=ov.height=Math.round(PH*k);ctx.drawImage(im,0,0,cv.width,cv.height);im.src='';im=null;
-    try{
-    st('KI wird geladen …');T=await import(LIB);try{T.env.backends.onnx.wasm.numThreads=1}catch(e){}
-    const files={},prog=pr=>{if(pr.status==='progress'&&pr.total){files[pr.file]=[pr.loaded,pr.total];let a=0,b=0;for(const f in files){a+=files[f][0];b+=files[f][1]}$('#prog').style.width=Math.round(a/b*100)+'%';$('#status').textContent=`KI wird geladen … ${(a/1048576).toFixed(1)} / ${(b/1048576).toFixed(1)} MB`}};
-    let gpu=false;try{gpu=!!(navigator.gpu&&await navigator.gpu.requestAdapter())}catch(e){}log('WebGPU '+(gpu?'verfügbar':'nicht verfügbar'));
-    let tries=gpu?[['webgpu','fp32','Grafikchip'],['wasm','q8','Prozessor']]:[['wasm','q8','Prozessor'],['wasm','fp32','Prozessor voll']];
-    if(prevDev&&tries.length>1){tries=tries.filter(t=>t[0]+t[1]!==prevDev);log('Nach Absturz ohne '+prevDev)}
-    for(const [dev,dt,nm] of tries){try{runSet({t:Date.now(),stage:'Laden',dev:dev+dt});model=await T.SamModel.from_pretrained(MID,{device:dev,dtype:dt,progress_callback:prog});usedDev=dev+dt;usedNm=nm;log('Modell: '+nm+' ('+dev+', '+dt+')');break}catch(e){log('Nicht möglich ('+dt+'): '+(e&&e.message||e))}}
-    if(!model)throw new Error('Modell nicht geladen');proc=await T.AutoProcessor.from_pretrained(MID);$('#prog').style.width='100%';
-    const t0=Date.now(),tm=setInterval(()=>{$('#status').textContent='Foto wird analysiert … '+Math.round((Date.now()-t0)/1000)+' s'},1000);st('Foto wird analysiert …');runSet({t:Date.now(),stage:'Analyse',dev:usedDev});
-    const ri=T.RawImage.fromCanvas?await T.RawImage.fromCanvas(cv):await T.RawImage.fromURL(cv.toDataURL('image/jpeg',.92));
-    {const full=await proc(ri);emb=await model.get_image_embeddings(full);inputs={original_sizes:full.original_sizes,reshaped_input_sizes:full.reshaped_input_sizes}}runSet(null);clearInterval(tm);const sec=Math.round((Date.now()-t0)/1000);log('Analyse: '+sec+' s');$('#mode').textContent='KI: '+usedNm+' · Analyse '+sec+' s';
+  try{const t0=Date.now();
+    st('KI wird geladen …');runSet({t:Date.now(),stage:'Laden',dev:''});$('#prog').style.width='15%';
+    const V=await import(MP+'/vision_bundle.mjs');$('#prog').style.width='45%';
+    const fs=await V.FilesetResolver.forVisionTasks(MP+'/wasm');$('#prog').style.width='70%';
+    let tries=[['GPU','Grafikchip'],['CPU','Prozessor']];if(prevDev){tries=tries.filter(t=>t[0]!==prevDev);log('Nach Absturz ohne '+prevDev)}
+    for(const [d,nm] of tries){try{runSet({t:Date.now(),stage:'Laden',dev:d});seg=await V.InteractiveSegmenter.createFromOptions(fs,{baseOptions:{modelAssetPath:MPM,delegate:d},outputCategoryMask:true,outputConfidenceMasks:false});usedDev=d;usedNm=nm;log('Modell: MediaPipe ('+nm+')');break}catch(e){log('Nicht möglich ('+nm+'): '+(e&&e.message||e))}}
+    if(!seg)throw new Error('Modell nicht geladen');runSet(null);$('#prog').style.width='100%';
+    $('#mode').textContent='KI: MediaPipe · '+usedNm+' · geladen in '+((Date.now()-t0)/1000).toFixed(1)+' s';
     st('Auf die Wand tippen. Möbel, Fenster oder Decke mit drin? «− Nicht Wand» wählen und dort tippen.');
-  }catch(e){console.error(e);runSet(null);if(usedDev.startsWith('webgpu')&&!prevDev){log('Grafikchip-Fehler: '+(e&&e.message||e)+' – wechsle zum Prozessor');prevDev=usedDev;try{model&&model.dispose&&await model.dispose()}catch(_){}model=null;emb=null;busy=false;return init()}st('Die KI konnte nicht geladen werden: '+(e&&e.message||e)+'\nInternet prüfen oder «Abbrechen».')}
+  }catch(e){console.error(e);runSet(null);st('Die KI konnte nicht geladen werden: '+(e&&e.message||e)+'\nInternet prüfen oder «Abbrechen».')}
   busy=false}
 
-async function decode(){mask=null;draw();if(!pts.length||!emb)return;busy=true;
-  try{const rs=inputs.reshaped_input_sizes[0],P=pts.map(q=>[q.x*rs[1],q.y*rs[0]]),Lb=pts.map(q=>BigInt(q.l));
-    const out=await model({...emb,input_points:new T.Tensor('float32',P.flat(),[1,1,P.length,2]),input_labels:new T.Tensor('int64',Lb,[1,1,Lb.length])});
-    const ms=await proc.post_process_masks(out.pred_masks,inputs.original_sizes,inputs.reshaped_input_sizes);
-    const sc=out.iou_scores.data;let bi=0;for(let i=1;i<sc.length;i++)if(sc[i]>sc[bi])bi=i;
-    const m=ms[0],H2=m.dims[2],W2=m.dims[3],d=new Uint8Array(W2*H2),src=m.data,off=bi*W2*H2;for(let i=0;i<W2*H2;i++)d[i]=src[off+i]?1:0;mask={w:W2,h:H2,d};
-    st('Wand markiert (Sicherheit '+Math.round(sc[bi]*100)+' %). Weitere Punkte setzen oder «Übernehmen».')}
-  catch(e){console.error(e);st('Fehler bei der Maske: '+(e&&e.message||e))}
+function segOne(x,y){return new Promise((res,rej)=>{try{seg.segment(cv,{keypoint:{x,y}},r=>{try{const m=r.categoryMask,w=m.width,h=m.height,d=m.getAsUint8Array();
+  const sel=d[Math.min(h-1,Math.max(0,Math.round(y*h)))*w+Math.min(w-1,Math.max(0,Math.round(x*w)))];const o=new Uint8Array(w*h);for(let i=0;i<w*h;i++)o[i]=d[i]===sel?1:0;res({w,h,d:o})}catch(e){rej(e)}})}catch(e){rej(e)}})}
+async function decode(){mask=null;draw();if(!pts.length||!seg)return;busy=true;
+  try{runSet({t:Date.now(),stage:'Antippen',dev:usedDev});const t0=performance.now();let acc=null;
+    for(const p of pts){const m=await segOne(p.x,p.y);if(!acc)acc={w:m.w,h:m.h,d:new Uint8Array(m.w*m.h)};
+      if(p.l){for(let i=0;i<acc.d.length;i++)acc.d[i]|=m.d[i]}else{for(let i=0;i<acc.d.length;i++)if(m.d[i])acc.d[i]=0}}
+    runSet(null);let n=0;for(let i=0;i<acc.d.length;i++)n+=acc.d[i];mask=n?acc:null;log('Maske: '+Math.round(performance.now()-t0)+' ms, '+Math.round(n/acc.d.length*100)+' % des Bildes');
+    st(mask?'Wand markiert. Weitere Punkte setzen oder «Übernehmen».':'Nichts markiert – an anderer Stelle tippen.')}
+  catch(e){console.error(e);runSet(null);st('Fehler bei der Maske: '+(e&&e.message||e))}
   busy=false;draw()}
 function draw(){octx.clearRect(0,0,ov.width,ov.height);
   if(mask){const {w,h,d}=mask,id=octx.createImageData(w,h);for(let i=0;i<w*h;i++)if(d[i]){const j=i*4;id.data[j]=197;id.data[j+1]=167;id.data[j+2]=122;id.data[j+3]=130}
@@ -129,7 +128,7 @@ function toPolys(){const {w:MW,h:MH,d}=mask,sc=Math.min(1,420/Math.max(MW,MH)),w
 
 $('#apply').onclick=()=>{if(!mask)return;const r=toPolys();if(!r){st('Keine Wand erkannt – bitte nochmals tippen.');return}
   try{localStorage.setItem('ws-ki-result',JSON.stringify(r))}catch(e){st('Speichern nicht möglich: '+e.message);return}back()};
-$('#wrap').addEventListener('pointerup',e=>{if(busy||!emb)return;const b=cv.getBoundingClientRect();pts.push({x:(e.clientX-b.left)/b.width,y:(e.clientY-b.top)/b.height,l:mode});decode()});
+$('#wrap').addEventListener('pointerup',e=>{if(busy||!seg)return;const b=cv.getBoundingClientRect();pts.push({x:(e.clientX-b.left)/b.width,y:(e.clientY-b.top)/b.height,l:mode});decode()});
 $('#mAdd').onclick=()=>{mode=1;draw()};$('#mSub').onclick=()=>{mode=0;draw()};$('#undo').onclick=()=>{pts.pop();decode()};
 boot();
 </script>
