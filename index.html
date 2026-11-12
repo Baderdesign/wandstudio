@@ -1842,7 +1842,7 @@ $('#projBtn').onclick=()=>{$('#projSheet').hidden=false;listProjects()};$('#proj
 $('#projSave').onclick=()=>saveProject();
 $('#projNew').onclick=()=>{curProject=null;$('#projName').value='';walls=[null];curWall=0;state._thumb='';loadWall(blankStd());$('#projSheet').hidden=true;toast('Neues Projekt begonnen.',1500)};
 $('#closeOv').onclick=()=>{$('#overlay').hidden=true};
-const APP_VER=95;
+const APP_VER=96;
 
 /* ---------- KI: Wand antippen – läuft auf eigener Seite (ki.html), damit genug Speicher frei ist ---------- */
 const AI=(function(){
@@ -2286,6 +2286,8 @@ const ACC=(function(){
     $('#accGo').onclick=login;$('#accPin').addEventListener('keydown',e=>{if(e.key==='Enter')login()});$('#accCode').addEventListener('keydown',e=>{if(e.key==='Enter')$('#accPin').focus()});
     $('#accBtn').onclick=openSheet;$('#accClose').onclick=()=>{$('#accSheet').hidden=true};$('#accOut').onclick=logout;
     $('#accAdd').onclick=async()=>{const nm=$('#accName').value.trim();if(!nm){toast('Bitte einen Namen eingeben.',2500);return}const r=await act('ws_add',{p_name:nm});if(r&&r.code){$('#accName').value='';showNew(nm,r.code,r.pin,true)}};
+    let qc='',qp='';try{const u=new URL(location.href);qc=(u.searchParams.get('code')||'').trim();qp=(u.searchParams.get('pin')||'').trim();if(qc||qp){u.searchParams.delete('code');u.searchParams.delete('pin');history.replaceState(null,'',u.pathname+u.search+u.hash)}}catch(e){}
+    if(qc&&qp&&!(ses&&ses.token)){lock();$('#accCode').value=qc;$('#accPin').value=qp;login();return}
     if(ses&&ses.token){unlock()}else lock();check();setInterval(()=>{if(document.visibilityState==='visible')check()},30*60*1000);
     document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&ses&&ses.t&&Date.now()-ses.t>10*60*1000)check()})}
   return{wire}})();
