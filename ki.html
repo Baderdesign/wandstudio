@@ -44,7 +44,12 @@ const st=t=>{$('#status').textContent=t;log(t)};
 const MID='Xenova/slimsam-77-uniform',LIB='https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.3';
 const cv=$('#cv'),ov=$('#ov'),ctx=cv.getContext('2d'),octx=ov.getContext('2d');
 let T,model,proc,inputs,emb,pts=[],mode=1,busy=true,mask=null,PW=0,PH=0;
-const back=()=>{location.href='./index.html?ki='+Date.now()};
+let leaving=false;
+const back=async()=>{if(leaving)return;leaving=true;try{$('#status').textContent='Zurück zur App …'}catch(e){}
+  try{emb=null;inputs=null;mask=null;if(model&&model.dispose)await model.dispose()}catch(e){}model=null;proc=null;T=null;
+  try{cv.width=cv.height=1;ov.width=ov.height=1}catch(e){}
+  setTimeout(()=>location.replace('./index.html?ki='+Date.now()),250)};
+window.addEventListener('unload',()=>{});
 window.addEventListener('error',e=>log('FEHLER: '+e.message));window.addEventListener('unhandledrejection',e=>log('FEHLER: '+((e.reason&&e.reason.message)||e.reason)));
 $('#cancel').onclick=()=>{try{localStorage.removeItem('ws-ki-result')}catch(e){}back()};
 
