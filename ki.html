@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Wandstudio KI</title>
+<style>
+:root{--bg:#202225;--panel:#292C30;--card:#32363B;--fg:#F2F0EB;--muted:#A5A8AC;--line:rgba(255,255,255,.1);--accent:#C5A77A;--ok:#7fbf8a;--bad:#e08a7a;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{background:var(--bg)}
+body{margin:0;color:var(--fg);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;padding:max(10px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(20px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:2px 0 10px}
+h1{font-size:15px;letter-spacing:.14em;margin:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+button{font:inherit;font-size:14px;font-weight:600;min-height:44px;padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer}
+button[aria-pressed=true]{background:var(--accent);color:#202225;border-color:var(--accent)}
+button:disabled{opacity:.4}
+.primary{background:var(--accent);color:#202225;border-color:var(--accent)}
+#status{font-size:13.5px;color:var(--muted);margin:8px 0 0;white-space:pre-line}
+.bar{height:5px;border-radius:3px;background:var(--panel);overflow:hidden;margin-top:8px}.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.wrap{position:relative;width:100%;touch-action:manipulation;border-radius:8px;overflow:hidden;background:#111}
+.wrap canvas{display:block;width:100%;height:auto}
+#ov{position:absolute;inset:0;pointer-events:none}
+#log{white-space:pre-wrap;font-size:11px;color:var(--muted);margin:0;max-height:140px;overflow:auto}
+details summary{font-size:12.5px;color:var(--muted);cursor:pointer}
+</style>
+</head>
+<body>
+<header><h1>WANDSTUDIO · KI</h1><button id="cancel">Abbrechen</button></header>
+<div class="card">
+  <div class="row"><button id="mAdd" aria-pressed="true">＋ Wand</button><button id="mSub" aria-pressed="false">− Nicht Wand</button><button id="undo">Letzten Punkt weg</button></div>
+  <div class="bar"><i id="prog"></i></div>
+  <p id="status">Wird vorbereitet …</p>
+</div>
+<div class="wrap" id="wrap"><canvas id="cv"></canvas><canvas id="ov"></canvas></div>
+<div class="card" style="margin-top:10px"><button class="primary" id="apply" disabled style="width:100%">✓ Übernehmen und zurück zur App</button></div>
+<details class="card"><summary>Protokoll</summary><pre id="log"></pre></details>
+
+<script type="module">
+const $=s=>document.querySelector(s);
+const L=[];const log=t=>{L.push(new Date().toLocaleTimeString('de-CH')+'  '+t);$('#log').textContent=L.join('\n')};
+const st=t=>{$('#status').textContent=t;log(t)};
+const MID='Xenova/slimsam-77-uniform',LIB='https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.3';
+const cv=$('#cv'),ov=$('#ov'),ctx=cv.getContext('2d'),octx=ov.getContext('2d');
+let T,model,proc,inputs,emb,pts=[],mode=1,busy=true,mask=null,PW=0,PH=0;
+const back=()=>{location.href='./index.html?ki='+Date.now()};
+window.addEventListener('error',e=>log('FEHLER: '+e.message));window.addEventListener('unhandledrejection',e=>log('FEHLER: '+((e.reason&&e.reason.message)||e.reason)));
+$('#cancel').onclick=()=>{try{localStorage.removeItem('ws-ki-result')}catch(e){}back()};
+
+function idbGet(id){return new Promise((res,rej)=>{const r=indexedDB.open('wandstudio',1);r.onupgradeneeded=()=>r.result.createObjectStore('projects',{keyPath:'id'});
+  r.onsuccess=()=>{const db=r.result,tx=db.transaction('projects','readonly'),q=tx.objectStore('projects').get(id);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)};r.onerror=()=>rej(r.error)})}
+
+async function init(){
+  let p=null;try{p=await idbGet('__ki')}catch(e){log(String(e))}
+  const w=p&&p.walls&&p.walls[p.cur||0];
+  if(!w||!w.img){st('Kein Foto gefunden. Bitte in der App ein Foto laden und den KI-Knopf nochmals drücken.');busy=false;return}
+  PW=w.PW;PH=w.PH;
+  const im=new Image();await new Promise(r=>{im.onload=r;im.onerror=r;im.src=w.img});
+  const k=Math.min(1,1024/Math.max(PW,PH));cv.width=ov.width=Math.round(PW*k);cv.height=ov.height=Math.round(PH*k);ctx.drawImage(im,0,0,cv.width,cv.height);
+  try{
+    st('KI wird geladen …');T=await import(LIB);try{T.env.backends.onnx.wasm.numThreads=1}catch(e){}
+    const files={},prog=pr=>{if(pr.status==='progress'&&pr.total){files[pr.file]=[pr.loaded,pr.total];let a=0,b=0;for(const f in files){a+=files[f][0];b+=files[f][1]}$('#prog').style.width=Math.round(a/b*100)+'%';$('#status').textContent=`KI wird geladen … ${(a/1048576).toFixed(1)} / ${(b/1048576).toFixed(1)} MB`}};
+    for(const dt of ['q8','fp32']){try{model=await T.SamModel.from_pretrained(MID,{dtype:dt,progress_callback:prog});log('Modell: '+dt);break}catch(e){log('Nicht möglich ('+dt+'): '+(e&&e.message||e))}}
+    if(!model)throw new Error('Modell nicht geladen');proc=await T.AutoProcessor.from_pretrained(MID);$('#prog').style.width='100%';
+    const t0=Date.now(),tm=setInterval(()=>{$('#status').textContent='Foto wird analysiert … '+Math.round((Date.now()-t0)/1000)+' s'},1000);st('Foto wird analysiert …');
+    const ri=T.RawImage.fromCanvas?await T.RawImage.fromCanvas(cv):await T.RawImage.fromURL(cv.toDataURL('image/jpeg',.92));
+    inputs=await proc(ri);emb=await model.get_image_embeddings(inputs);clearInterval(tm);log('Analyse: '+Math.round((Date.now()-t0)/1000)+' s');
+    st('Auf die Wand tippen. Möbel, Fenster oder Decke mit drin? «− Nicht Wand» wählen und dort tippen.');
+  }catch(e){console.error(e);st('Die KI konnte nicht geladen werden: '+(e&&e.message||e)+'\nInternet prüfen oder «Abbrechen».')}
+  busy=false}
+
+async function decode(){mask=null;draw();if(!pts.length||!emb)return;busy=true;
+  try{const rs=inputs.reshaped_input_sizes[0],P=pts.map(q=>[q.x*rs[1],q.y*rs[0]]),Lb=pts.map(q=>BigInt(q.l));
+    const out=await model({...emb,input_points:new T.Tensor('float32',P.flat(),[1,1,P.length,2]),input_labels:new T.Tensor('int64',Lb,[1,1,Lb.length])});
+    const ms=await proc.post_process_masks(out.pred_masks,inputs.original_sizes,inputs.reshaped_input_sizes);
+    const sc=out.iou_scores.data;let bi=0;for(let i=1;i<sc.length;i++)if(sc[i]>sc[bi])bi=i;
+    const m=ms[0],H2=m.dims[2],W2=m.dims[3],d=new Uint8Array(W2*H2),src=m.data,off=bi*W2*H2;for(let i=0;i<W2*H2;i++)d[i]=src[off+i]?1:0;mask={w:W2,h:H2,d};
+    st('Wand markiert (Sicherheit '+Math.round(sc[bi]*100)+' %). Weitere Punkte setzen oder «Übernehmen».')}
+  catch(e){console.error(e);st('Fehler bei der Maske: '+(e&&e.message||e))}
+  busy=false;draw()}
+function draw(){octx.clearRect(0,0,ov.width,ov.height);
+  if(mask){const {w,h,d}=mask,id=octx.createImageData(w,h);for(let i=0;i<w*h;i++)if(d[i]){const j=i*4;id.data[j]=197;id.data[j+1]=167;id.data[j+2]=122;id.data[j+3]=130}
+    const t=document.createElement('canvas');t.width=w;t.height=h;t.getContext('2d').putImageData(id,0,0);octx.drawImage(t,0,0,ov.width,ov.height)}
+  const r=Math.max(6,ov.width/110);pts.forEach(q=>{octx.beginPath();octx.arc(q.x*ov.width,q.y*ov.height,r,0,7);octx.fillStyle=q.l?'#7fbf8a':'#e08a7a';octx.fill();octx.lineWidth=r*.35;octx.strokeStyle='#fff';octx.stroke()});
+  $('#apply').disabled=!mask;$('#mAdd').setAttribute('aria-pressed',mode===1);$('#mSub').setAttribute('aria-pressed',mode===0)}
+
+/* Maske -> Umriss, Aussparungen, Ecken (in Fotokoordinaten der App) */
+const DIRS=[[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1],[0,-1],[1,-1]];
+function trace(w,h,lab,id){let s=-1;for(let i=0;i<w*h;i++)if(lab[i]===id){s=i;break}if(s<0)return[];
+  const fg=(x,y)=>x>=0&&y>=0&&x<w&&y<h&&lab[y*w+x]===id;let cx=s%w,cy=(s/w)|0,b=4;const out=[[cx,cy]],sx=cx,sy=cy;
+  for(let n=0;n<w*h*4;n++){let found=false;for(let k=1;k<=8;k++){const dI=(b+k)%8,nx=cx+DIRS[dI][0],ny=cy+DIRS[dI][1];if(fg(nx,ny)){const pv=(dI+7)%8,px=cx+DIRS[pv][0],py=cy+DIRS[pv][1];cx=nx;cy=ny;
+        let nb=0;for(let q=0;q<8;q++)if(cx+DIRS[q][0]===px&&cy+DIRS[q][1]===py){nb=q;break}b=nb;found=true;break}}
+    if(!found||(cx===sx&&cy===sy))break;out.push([cx,cy])}return out}
+function simplify(P,eps){if(P.length<4)return P;const keep=new Uint8Array(P.length);keep[0]=keep[P.length-1]=1;const stk=[[0,P.length-1]];
+  while(stk.length){const [a,b]=stk.pop();const [x1,y1]=P[a],[x2,y2]=P[b],dx=x2-x1,dy=y2-y1,Ln=Math.hypot(dx,dy)||1;let md=0,mi=-1;
+    for(let i=a+1;i<b;i++){const d=Math.abs(dy*P[i][0]-dx*P[i][1]+x2*y1-y2*x1)/Ln;if(d>md){md=d;mi=i}}if(md>eps&&mi>0){keep[mi]=1;stk.push([a,mi],[mi,b])}}
+  return P.filter((_,i)=>keep[i])}
+function label(g,w,h,val){const lab=new Int32Array(w*h).fill(-1),sizes=[],touch=[];let id=0;const q=new Int32Array(w*h);
+  for(let i=0;i<w*h;i++){if(g[i]!==val||lab[i]>=0)continue;let qh=0,qt=0,n=0,tb=false;q[qt++]=i;lab[i]=id;
+    while(qh<qt){const j=q[qh++],x=j%w,y=(j/w)|0;n++;if(x===0||y===0||x===w-1||y===h-1)tb=true;
+      for(const [ax,ay] of [[1,0],[-1,0],[0,1],[0,-1]]){const X=x+ax,Y=y+ay;if(X<0||Y<0||X>=w||Y>=h)continue;const k=Y*w+X;if(g[k]===val&&lab[k]<0){lab[k]=id;q[qt++]=k}}}
+    sizes.push(n);touch.push(tb);id++}return{lab,sizes,touch}}
+function toPolys(){const {w:MW,h:MH,d}=mask,sc=Math.min(1,420/Math.max(MW,MH)),w=Math.max(8,Math.round(MW*sc)),h=Math.max(8,Math.round(MH*sc)),g=new Uint8Array(w*h);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++)g[y*w+x]=d[Math.min(MH-1,Math.round((y+.5)/h*MH-.5))*MW+Math.min(MW-1,Math.round((x+.5)/w*MW-.5))];
+  const A=label(g,w,h,1);if(!A.sizes.length)return null;let big=0;A.sizes.forEach((n,i)=>{if(n>A.sizes[big])big=i});
+  const only=new Uint8Array(w*h);for(let i=0;i<w*h;i++)only[i]=A.lab[i]===big?1:0;
+  const fx=PW/w,fy=PH/h,eps=Math.max(1.2,Math.hypot(w,h)*.006),toP=q=>[Math.max(0,Math.min(PW,(q[0]+.5)*fx)),Math.max(0,Math.min(PH,(q[1]+.5)*fy))];
+  const outline=simplify(trace(w,h,A.lab,big),eps).map(toP);if(outline.length<3)return null;
+  const B=label(only,w,h,0),holes=[];B.sizes.forEach((n,i)=>{if(!B.touch[i]&&n>w*h*.002){const c=simplify(trace(w,h,B.lab,i),eps).map(toP);if(c.length>=3)holes.push(c)}});
+  let tl=outline[0],tr=outline[0],br=outline[0],bl=outline[0];outline.forEach(q=>{if(q[0]+q[1]<tl[0]+tl[1])tl=q;if(q[0]-q[1]>tr[0]-tr[1])tr=q;if(q[0]+q[1]>br[0]+br[1])br=q;if(q[1]-q[0]>bl[1]-bl[0])bl=q});
+  return{outline,holes,poly:[tl,tr,br,bl]}}
+
+$('#apply').onclick=()=>{if(!mask)return;const r=toPolys();if(!r){st('Keine Wand erkannt – bitte nochmals tippen.');return}
+  try{localStorage.setItem('ws-ki-result',JSON.stringify(r))}catch(e){st('Speichern nicht möglich: '+e.message);return}back()};
+$('#wrap').addEventListener('pointerup',e=>{if(busy||!emb)return;const b=cv.getBoundingClientRect();pts.push({x:(e.clientX-b.left)/b.width,y:(e.clientY-b.top)/b.height,l:mode});decode()});
+$('#mAdd').onclick=()=>{mode=1;draw()};$('#mSub').onclick=()=>{mode=0;draw()};$('#undo').onclick=()=>{pts.pop();decode()};
+init();
+</script>
+</body>
+</html>

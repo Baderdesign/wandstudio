@@ -1,5 +1,5 @@
 /* Wandstudio – Offline-Speicher */
-const APP = 'ws-app-v1', ST = 'ws-stencils-v1', EXT = 'ws-ext-v1';
+const APP = 'ws-app-v2', ST = 'ws-stencils-v1', EXT = 'ws-ext-v1';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-180.png', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -15,9 +15,13 @@ self.addEventListener('fetch', e => {
   if (url.hostname.endsWith('supabase.co')) return; // Anmeldung immer live
 
   // App selbst: zuerst Netz (für Updates), sonst Speicher
-  if (req.mode === 'navigate' || (url.origin === location.origin && /\/(index\.html)?$/.test(url.pathname))) {
-    e.respondWith(fetch(req).then(r => { if (r.ok) { const cp = r.clone(); caches.open(APP).then(c => c.put('./index.html', cp)); } return r; })
-      .catch(() => caches.match('./index.html')));
+  // Immer frisch vom Server (ohne Browser-Zwischenspeicher); nur ohne Netz aus dem Speicher.
+  const isApp = url.origin === location.origin && /\/(index\.html)?$/.test(url.pathname);
+  if (req.mode === 'navigate' || isApp) {
+    e.respondWith(fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }).then(r => {
+      if (r.ok && isApp) { const cp = r.clone(); caches.open(APP).then(c => c.put('./index.html', cp)); }
+      return r;
+    }).catch(() => caches.match(isApp ? './index.html' : req, { ignoreSearch: true }).then(hit => hit || caches.match('./index.html'))));
     return;
   }
   // Schablonen: zuerst Speicher
