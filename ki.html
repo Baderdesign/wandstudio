@@ -33,6 +33,9 @@ details summary{font-size:12.5px;color:var(--muted);cursor:pointer}
   <div class="bar"><i id="prog"></i></div>
   <p id="status">Wird vorbereitet …</p>
 </div>
+<div class="card" id="crash" hidden><p style="margin:0 0 10px"><b>Die KI ist beim letzten Versuch abgestürzt.</b> Das iPhone hatte zu wenig freien Arbeitsspeicher.</p>
+<p style="margin:0 0 12px;font-size:14px;opacity:.85">Tipp: Andere Apps und Safari-Tabs schliessen. Die App direkt in <b>Safari</b> oder über das Symbol auf dem Home-Bildschirm öffnen – nicht aus WhatsApp, Mail oder einer anderen App heraus (dort ist weniger Speicher frei).</p>
+<div class="row"><button class="primary" id="retry">Nochmals versuchen</button><button id="crBack">Zurück zur App</button></div></div>
 <div class="wrap" id="wrap"><canvas id="cv"></canvas><canvas id="ov"></canvas></div>
 <div class="card" style="margin-top:10px"><button class="primary" id="apply" disabled style="width:100%">✓ Übernehmen und zurück zur App</button></div>
 <details class="card"><summary>Protokoll</summary><pre id="log"></pre></details>
@@ -45,7 +48,7 @@ const MID='Xenova/slimsam-77-uniform',LIB='https://cdn.jsdelivr.net/npm/@hugging
 const cv=$('#cv'),ov=$('#ov'),ctx=cv.getContext('2d'),octx=ov.getContext('2d');
 let T,model,proc,inputs,emb,pts=[],mode=1,busy=true,mask=null,PW=0,PH=0;
 let leaving=false;
-const back=async()=>{if(leaving)return;leaving=true;try{$('#status').textContent='Zurück zur App …'}catch(e){}
+const back=async()=>{if(leaving)return;leaving=true;runSet(null);try{$('#status').textContent='Zurück zur App …'}catch(e){}
   try{emb=null;inputs=null;mask=null;if(model&&model.dispose)await model.dispose()}catch(e){}model=null;proc=null;T=null;
   try{cv.width=cv.height=1;ov.width=ov.height=1}catch(e){}
   setTimeout(()=>location.replace('./index.html?ki='+Date.now()),250)};
@@ -56,23 +59,29 @@ $('#cancel').onclick=()=>{try{localStorage.removeItem('ws-ki-result')}catch(e){}
 function idbGet(id){return new Promise((res,rej)=>{const r=indexedDB.open('wandstudio',1);r.onupgradeneeded=()=>r.result.createObjectStore('projects',{keyPath:'id'});
   r.onsuccess=()=>{const db=r.result,tx=db.transaction('projects','readonly'),q=tx.objectStore('projects').get(id);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)};r.onerror=()=>rej(r.error)})}
 
+const RUN='ws-ki-run';const runSet=v=>{try{v?localStorage.setItem(RUN,JSON.stringify(v)):localStorage.removeItem(RUN)}catch(e){}};
+async function boot(){let r=null;try{r=JSON.parse(localStorage.getItem(RUN)||'null')}catch(e){}
+  if(r&&Date.now()-r.t<5*60e3){log('Letzter Versuch nicht beendet (Schritt: '+r.stage+')');$('#crash').hidden=false;st('Letzter Versuch abgestürzt.');busy=false;
+    $('#retry').onclick=()=>{$('#crash').hidden=true;runSet(null);init()};$('#crBack').onclick=()=>{runSet(null);try{localStorage.removeItem('ws-ki-result')}catch(e){}back()};return}
+  init()}
 async function init(){
   let p=null;try{p=await idbGet('__ki')}catch(e){log(String(e))}
   const w=p&&p.walls&&p.walls[p.cur||0];
   if(!w||!w.img){st('Kein Foto gefunden. Bitte in der App ein Foto laden und den KI-Knopf nochmals drücken.');busy=false;return}
-  PW=w.PW;PH=w.PH;
-  const im=new Image();await new Promise(r=>{im.onload=r;im.onerror=r;im.src=w.img});
-  const k=Math.min(1,1024/Math.max(PW,PH));cv.width=ov.width=Math.round(PW*k);cv.height=ov.height=Math.round(PH*k);ctx.drawImage(im,0,0,cv.width,cv.height);
+  PW=w.PW;PH=w.PH;const src=w.img;p=null;
+  let im=new Image();await new Promise(r=>{im.onload=r;im.onerror=r;im.src=src});
+  const k=Math.min(1,1024/Math.max(PW,PH));cv.width=ov.width=Math.round(PW*k);cv.height=ov.height=Math.round(PH*k);ctx.drawImage(im,0,0,cv.width,cv.height);im.src='';im=null;
+  runSet({t:Date.now(),stage:'Laden'});
   try{
     st('KI wird geladen …');T=await import(LIB);try{T.env.backends.onnx.wasm.numThreads=1}catch(e){}
     const files={},prog=pr=>{if(pr.status==='progress'&&pr.total){files[pr.file]=[pr.loaded,pr.total];let a=0,b=0;for(const f in files){a+=files[f][0];b+=files[f][1]}$('#prog').style.width=Math.round(a/b*100)+'%';$('#status').textContent=`KI wird geladen … ${(a/1048576).toFixed(1)} / ${(b/1048576).toFixed(1)} MB`}};
-    for(const dt of ['q8','fp32']){try{model=await T.SamModel.from_pretrained(MID,{dtype:dt,progress_callback:prog});log('Modell: '+dt);break}catch(e){log('Nicht möglich ('+dt+'): '+(e&&e.message||e))}}
+    for(const [dt,so] of [['q8',{enableCpuMemArena:false,enableMemPattern:false}],['q8',null],['fp32',null]]){try{model=await T.SamModel.from_pretrained(MID,so?{dtype:dt,progress_callback:prog,session_options:so}:{dtype:dt,progress_callback:prog});log('Modell: '+dt+(so?' (Sparspeicher)':''));break}catch(e){log('Nicht möglich ('+dt+'): '+(e&&e.message||e))}}
     if(!model)throw new Error('Modell nicht geladen');proc=await T.AutoProcessor.from_pretrained(MID);$('#prog').style.width='100%';
-    const t0=Date.now(),tm=setInterval(()=>{$('#status').textContent='Foto wird analysiert … '+Math.round((Date.now()-t0)/1000)+' s'},1000);st('Foto wird analysiert …');
+    const t0=Date.now(),tm=setInterval(()=>{$('#status').textContent='Foto wird analysiert … '+Math.round((Date.now()-t0)/1000)+' s'},1000);st('Foto wird analysiert …');runSet({t:Date.now(),stage:'Analyse'});
     const ri=T.RawImage.fromCanvas?await T.RawImage.fromCanvas(cv):await T.RawImage.fromURL(cv.toDataURL('image/jpeg',.92));
-    inputs=await proc(ri);emb=await model.get_image_embeddings(inputs);clearInterval(tm);log('Analyse: '+Math.round((Date.now()-t0)/1000)+' s');
+    {const full=await proc(ri);emb=await model.get_image_embeddings(full);inputs={original_sizes:full.original_sizes,reshaped_input_sizes:full.reshaped_input_sizes}}runSet(null);clearInterval(tm);log('Analyse: '+Math.round((Date.now()-t0)/1000)+' s');
     st('Auf die Wand tippen. Möbel, Fenster oder Decke mit drin? «− Nicht Wand» wählen und dort tippen.');
-  }catch(e){console.error(e);st('Die KI konnte nicht geladen werden: '+(e&&e.message||e)+'\nInternet prüfen oder «Abbrechen».')}
+  }catch(e){console.error(e);runSet(null);st('Die KI konnte nicht geladen werden: '+(e&&e.message||e)+'\nInternet prüfen oder «Abbrechen».')}
   busy=false}
 
 async function decode(){mask=null;draw();if(!pts.length||!emb)return;busy=true;
@@ -120,7 +129,7 @@ $('#apply').onclick=()=>{if(!mask)return;const r=toPolys();if(!r){st('Keine Wand
   try{localStorage.setItem('ws-ki-result',JSON.stringify(r))}catch(e){st('Speichern nicht möglich: '+e.message);return}back()};
 $('#wrap').addEventListener('pointerup',e=>{if(busy||!emb)return;const b=cv.getBoundingClientRect();pts.push({x:(e.clientX-b.left)/b.width,y:(e.clientY-b.top)/b.height,l:mode});decode()});
 $('#mAdd').onclick=()=>{mode=1;draw()};$('#mSub').onclick=()=>{mode=0;draw()};$('#undo').onclick=()=>{pts.pop();decode()};
-init();
+boot();
 </script>
 </body>
 </html>
