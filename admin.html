@@ -153,7 +153,7 @@ window.addEventListener('hashchange',()=>{if(ses&&!$('#app').hidden)go(location.
 function showLogin(msg){$('#app').hidden=true;$('#login').hidden=false;$('#lerr').textContent=msg||''}
 function denied(msg){ses=null;showLogin(msg)}
 function enter(){$('#login').hidden=true;$('#app').hidden=false;
- $('#side').innerHTML='<div class="brand"><i class="hexlogo"></i><div><b>BADER WALLSTUDIO</b><small>Admin</small></div></div>'+NAV.map((n,i)=>(i===1?'<div class="navsep">Inhalte</div>':i===7?'<div class="navsep">Kunden</div>':i===9?'<div class="navsep">System</div>':'')+'<button class="nav" data-v="'+n[0]+'"><i></i>'+n[1]+'</button>').join('')+'<div style="flex:1"></div><button class="nav" id="logout"><i></i>Abmelden</button>';
+ $('#side').innerHTML='<div class="brand"><i class="hexlogo"></i><div><b>BADER WALLSTUDIO</b><small>Admin</small></div></div>'+NAV.map((n,i)=>(i===1?'<div class="navsep">Inhalte</div>':i===7?'<div class="navsep">Kunden</div>':i===9?'<div class="navsep">System</div>':'')+'<button class="nav" data-v="'+n[0]+'"><i></i>'+n[1]+'</button>').join('')+'<div style="flex:1"></div><a class="nav" href="./" style="text-decoration:none;font-weight:600"><i style="background:#c5a77a"></i>Wallstudio öffnen</a><button class="nav" id="logout"><i></i>Abmelden</button>';
  go(location.hash.slice(1)||'dashboard');loadUsers()}
 $('#lform').addEventListener('submit',async e=>{e.preventDefault();const c=$('#lcode').value.trim(),p=$('#lpin').value.trim();if(!c||!p){$('#lerr').textContent='Bitte Code und PIN eingeben.';return}
  const b=$('#lgo');b.disabled=true;$('#lerr').textContent='';

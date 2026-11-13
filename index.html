@@ -973,7 +973,7 @@ body.mode-simple #v3dFine,body.mode-simple #v3dFineBox{display:none!important}
 <div class="accwrap" id="accSheet" hidden><div class="accpanel">
   <div class="acctop"><b>Zugänge</b><button class="sbtn" id="accClose" type="button">Schliessen</button></div>
   <p class="hint" id="accWho"></p>
-  <div id="accAdmin" hidden>
+  <div id="accAdmin" hidden><a class="chipb kmain" id="accToAdmin" href="admin.html" style="text-decoration:none;margin-bottom:12px">Adminbereich öffnen</a>
     <div class="accadd"><input id="accName" type="text" placeholder="Name der Person"><button class="sbtn donebtn" id="accAdd" type="button">+ Einladen</button></div>
     <div class="accnew" id="accNew" hidden></div>
     <div id="accList"></div>
@@ -2081,7 +2081,7 @@ $('#projBtn').onclick=()=>{$('#projSheet').hidden=false;listProjects()};$('#proj
 $('#projSave').onclick=()=>saveProject();
 $('#projNew').onclick=()=>{curProject=null;$('#projName').value='';walls=[null];curWall=0;state._thumb='';loadWall(blankStd());$('#projSheet').hidden=true;toast('Neues Projekt begonnen.',1500)};
 $('#closeOv').onclick=()=>{$('#overlay').hidden=true};
-const APP_VER=103,APP_LABEL='1.0.3';
+const APP_VER=105,APP_LABEL='1.0.3';
 
 /* ---------- KI: Wand antippen – läuft auf eigener Seite (ki.html), damit genug Speicher frei ist ---------- */
 const AI=(function(){
@@ -2638,7 +2638,7 @@ const ACC=(function(){
     if(!r.ok)throw new Error('Server '+r.status);const t=await r.text();return t?JSON.parse(t):null}
   const fmt=d=>{if(!d)return'noch nie';const x=new Date(d);return x.toLocaleDateString('de-CH',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+x.toLocaleTimeString('de-CH',{hour:'2-digit',minute:'2-digit'})};
   function lock(msg){$('#accLock').hidden=false;$('#accMsg').textContent=msg||'';$('#accMsg').hidden=!msg;$('#accBtn').hidden=true;setTimeout(()=>{try{$('#accCode').focus()}catch(e){}},50)}
-  function unlock(){$('#accLock').hidden=true;$('#accBtn').hidden=false;$('#accBtn').textContent=ses&&ses.admin?'Zugänge':(ses?ses.name:'')}
+  function unlock(){$('#accLock').hidden=true;$('#accBtn').hidden=false;$('#accBtn').textContent=ses&&ses.admin?'Admin':(ses?ses.name:'')}
   async function check(){if(!ON)return;if(!ses||!ses.token){lock();return}
     try{const r=await rpc('ws_check',{p_token:ses.token});if(r&&r.ok){ses.name=r.name;ses.admin=r.admin;ses.t=Date.now();save();unlock()}
       else{ses=null;save();lock(r&&r.error==='gesperrt'?'Dein Zugang wurde gesperrt. Bitte melde dich bei Bader Wandstudio.':'Dein Zugang ist nicht mehr gültig. Bitte neu anmelden.')}}
@@ -2672,7 +2672,7 @@ const ACC=(function(){
   function openSheet(){$('#accSheet').hidden=false;$('#accNew').hidden=true;$('#accWho').textContent='Angemeldet als '+(ses?ses.name:'');$('#accAdmin').hidden=!(ses&&ses.admin);if(ses&&ses.admin)list()}
   function wire(){if(!ON){$('#accBtn').hidden=true;return}
     $('#accGo').onclick=login;$('#accPin').addEventListener('keydown',e=>{if(e.key==='Enter')login()});$('#accCode').addEventListener('keydown',e=>{if(e.key==='Enter')$('#accPin').focus()});
-    $('#accBtn').onclick=openSheet;$('#accClose').onclick=()=>{$('#accSheet').hidden=true};$('#accOut').onclick=logout;
+    $('#accBtn').onclick=()=>{if(ses&&ses.admin)location.href='admin.html';else openSheet()};$('#accClose').onclick=()=>{$('#accSheet').hidden=true};$('#accOut').onclick=logout;
     $('#accAdd').onclick=async()=>{const nm=$('#accName').value.trim();if(!nm){toast('Bitte einen Namen eingeben.',2500);return}const r=await act('ws_add',{p_name:nm});if(r&&r.code){$('#accName').value='';showNew(nm,r.code,r.pin,true)}};
     let qc='',qp='';try{const u=new URL(location.href);qc=(u.searchParams.get('code')||'').trim();qp=(u.searchParams.get('pin')||'').trim();if(qc||qp){u.searchParams.delete('code');u.searchParams.delete('pin');history.replaceState(null,'',u.pathname+u.search+u.hash)}}catch(e){}
     if(qc&&qp&&!(ses&&ses.token)){lock();$('#accCode').value=qc;$('#accPin').value=qp;login();return}
