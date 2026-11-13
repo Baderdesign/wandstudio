@@ -1,6 +1,6 @@
 {
-  "name": "Bader Wandstudio",
-  "short_name": "Wandstudio",
+  "name": "Bader Wallstudio",
+  "short_name": "Bader Wallstudio",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#000000",
@@ -8,12 +8,12 @@
   "lang": "de-CH",
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "icon-192.png?v=3",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "icon-512.png",
+      "src": "icon-512.png?v=3",
       "sizes": "512x512",
       "type": "image/png"
     }
