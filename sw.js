@@ -1,5 +1,5 @@
 /* Wandstudio – Offline-Speicher */
-const APP = 'ws-app-v2', ST = 'ws-stencils-v1', EXT = 'ws-ext-v1';
+const APP='ws-app-v4', ST = 'ws-stencils-v1', EXT = 'ws-ext-v1';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-180.png', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
