@@ -85,7 +85,7 @@ td .btn.sm{margin:2px 4px 2px 0}
 <div id="layer"></div>
 <script>
 (function(){
-const ADMIN_VER='0.1';
+const ADMIN_VER='0.3';
 const SB_URL='https://ljenfchiwbrstqeliujg.supabase.co',SB_KEY='sb_publishable_R6yLXKZmMJZyBv4vYzAx2Q_WJ4t_ffW';
 const LS='ws-acc';let ses=null;try{ses=JSON.parse(localStorage.getItem(LS)||'null')}catch(e){}
 const save=()=>{try{ses?localStorage.setItem(LS,JSON.stringify(ses)):localStorage.removeItem(LS)}catch(e){}};
@@ -100,6 +100,9 @@ const B={
  raeume:[['Wohnzimmer','Sofa, Couchtisch, Sessel, Sideboard, Stehlampe, Teppich, Pflanze'],['Küche','Küchenzeile nach Mass'],['Schlafzimmer','Möbel zur Auswahl'],['Dusche / Bad','Duschkabine, Badewanne, Waschtisch, Spiegel, WC, Handtuchheizkörper'],['WC','Möbel zur Auswahl'],['Eigenes Foto hochladen','Keine Einrichtung']]
 };
 let users=null,usersErr='',newBox='';
+const CK='ws-custom-tech';let cust=[];try{cust=JSON.parse(localStorage.getItem(CK)||'[]')}catch(e){}if(!Array.isArray(cust))cust=[];
+function saveCust(){try{localStorage.setItem(CK,JSON.stringify(cust));return true}catch(e){toast('Der Speicher auf diesem Gerät ist voll. Bitte eine Technik entfernen.');return false}}
+const CATS=['Effekt','Kalk','Lehm','Betonoptik','Marmoroptik','Metallic','Strukturputz','Fugenlos','Individuell'];
 const $=s=>document.querySelector(s),esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const hx=k=>'<i class="hx" style="background-image:url('+(TH[k]||'')+')"></i>';
 const pill=(on,a,b)=>'<span class="pill '+(on?'':'off')+'">'+(on?(a||'Aktiv'):(b||'Inaktiv'))+'</span>';
@@ -110,13 +113,16 @@ function tbl(cols,rows){return '<div class="tblw"><table><thead><tr>'+cols.map(c
 const later=p=>'<div class="note">Hier siehst du den heutigen Stand. Bearbeiten wird in '+p+' freigeschaltet.</div>';
 const V={
  dashboard(){const nu=users?users.length:'–',na=users?users.filter(u=>u.active).length:'–';
-  const c=[[B.techniken.length,'Spachteltechniken','techniken'],[B.boden.length,'Bodenmaterialien','boden'],[B.raeume.length,'Räume','raeume'],[nu,'Zugänge','benutzer'],[na,'davon aktiv','benutzer']];
+  const c=[[B.techniken.length+cust.length,'Spachteltechniken','techniken'],[B.boden.length,'Bodenmaterialien','boden'],[B.raeume.length,'Räume','raeume'],[nu,'Zugänge','benutzer'],[na,'davon aktiv','benutzer']];
   const rec=users?users.slice().filter(u=>u.last_login).sort((a,b)=>new Date(b.last_login)-new Date(a.last_login)).slice(0,5):[];
   return head('Dashboard','Angemeldet als '+esc(ses.name))+'<div class="cards">'+c.map(x=>'<button class="card stat" data-go="'+x[2]+'" style="text-align:left;cursor:pointer"><b>'+x[0]+'</b><span>'+x[1]+'</span></button>').join('')+'</div>'+
   '<div class="two"><div class="card"><h2>Letzte Anmeldungen</h2>'+(rec.length?tbl(['Name','Code','Wann'],rec.map(u=>'<tr><td>'+esc(u.name)+'</td><td>'+esc(u.code)+'</td><td>'+fmt(u.last_login)+'</td></tr>')):'<p class="sub">'+(usersErr?esc(usersErr):'Noch keine Anmeldungen.')+'</p>')+'</div>'+
   '<div class="card"><h2>Schnellzugriff</h2><div class="quick"><button class="btn" data-go="benutzer">Neuen Zugang anlegen</button><button class="btn" data-go="techniken">Spachteltechniken ansehen</button><a class="btn" href="./" style="text-decoration:none">Wallstudio öffnen</a></div></div></div>'+
   '<p class="sub">Admin-Version '+ADMIN_VER+' · Kundenprojekte, Gestaltungsvorschläge und Bilder erscheinen hier, sobald sie in Supabase gespeichert werden.</p>'},
- techniken(){return head('Spachteltechniken','Eingebaute Techniken in Wallstudio 1.0.3')+later('Phase 4')+'<div class="card">'+tbl(['Technik','Kategorie','Status'],B.techniken.map(r=>'<tr><td><div class="nm">'+hx(r[0])+'<div>'+r[1]+'<small>eingebaut</small></div></div></td><td>'+r[2]+'</td><td>'+pill(1)+'</td></tr>'))+'</div>'},
+ techniken(){return '<div class="top"><div><button class="btn sm menu" id="menu">Menü</button><h1>Spachteltechniken</h1><p class="sub">Eigene Techniken aus Originalbildern anlegen</p></div><button class="btn pri" id="tnew">Neue Technik</button></div>'+
+  '<div class="note">Eigene Techniken werden vorerst nur auf diesem Gerät gespeichert und erscheinen hier im Wallstudio. Die Verteilung an Kunden folgt mit der Supabase-Einrichtung.</div>'+
+  '<div class="card"><h2>Eigene Techniken</h2>'+(cust.length?tbl(['Technik','Kategorie','Status',''],cust.map(t=>'<tr><td><div class="nm"><i class="hx" style="background-image:url('+t.img+')"></i><div>'+esc(t.name)+'<small>eigenes Foto</small></div></div></td><td>'+esc(t.cat||'')+'</td><td>'+pill(t.on!==false)+'</td><td><button class="btn sm" data-tedit="'+esc(t.id)+'">Bearbeiten</button><a class="btn sm" style="text-decoration:none;display:inline-block" href="./?tech=c:'+esc(t.id)+'">Im Wallstudio ansehen</a></td></tr>')):'<p class="sub">Noch keine eigene Technik. Mit «Neue Technik» lädst du ein Foto deiner Musterplatte hoch.</p>')+'</div>'+
+  '<div class="card"><h2>Eingebaute Techniken</h2>'+tbl(['Technik','Kategorie','Status'],B.techniken.map(r=>'<tr><td><div class="nm">'+hx(r[0])+'<div>'+r[1]+'<small>eingebaut</small></div></div></td><td>'+r[2]+'</td><td>'+pill(1)+'</td></tr>'))+'</div>'},
  boden(){return head('Bodenmaterialien','Eingebaute Böden in Wallstudio 1.0.3')+later('Phase 5')+'<div class="card">'+tbl(['Boden','Kategorie','Status'],B.boden.map(r=>'<tr><td><b>'+r[0]+'</b></td><td>'+r[1]+'</td><td>'+pill(1)+'</td></tr>'))+'</div>'},
  wand(){return head('Wandmaterialien','Materialgruppen für die Spachteltechniken')+later('Phase 4')+'<div class="card"><p class="sub">Noch keine Materialgruppen angelegt. Heute wählt der Kunde direkt eine Spachteltechnik.</p></div>'},
  raeume(){return head('Räume','Raumliste und Einrichtung in Wallstudio 1.0.3')+later('Phase 7')+'<div class="card">'+tbl(['Raum','Einrichtung zur Auswahl','Status'],B.raeume.map(r=>'<tr><td><b>'+r[0]+'</b></td><td>'+r[1]+'</td><td>'+pill(1)+'</td></tr>'))+'</div>'},
@@ -131,6 +137,26 @@ const V={
   return h+'<div class="card">'+tbl(['Name','Code','Rolle','Lizenz','Letzte Anmeldung',''],users.map(u=>'<tr><td><b>'+esc(u.name)+'</b></td><td>'+esc(u.code)+'</td><td>'+(u.admin?'Administrator':'Kunde')+'</td><td>'+pill(u.active,'Aktiv','Gesperrt')+'</td><td>'+fmt(u.last_login)+'</td><td>'+
    (u.admin?'':'<button class="btn sm" data-act="toggle" data-id="'+esc(u.id)+'">'+(u.active?'Sperren':'Entsperren')+'</button>')+'<button class="btn sm" data-act="pin" data-id="'+esc(u.id)+'">Neue PIN</button>'+(u.admin?'':'<button class="btn sm danger" data-act="rm" data-id="'+esc(u.id)+'">Entfernen</button>')+'</td></tr>'))+'</div>'}
 };
+function tEdit(id){const o=id?cust.find(t=>t.id===id):null;const T=o?Object.assign({},o):{id:'',name:'',desc:'',cat:'Effekt',img:'',color:'',cm:60,str:50,gloss:40,grain:40,relief:40,metal:0,on:true};
+ const rg=(k,l)=>'<label class="f">'+l+' <input type="range" min="0" max="100" data-k="'+k+'" value="'+(T[k]==null?50:T[k])+'"></label>';
+ $('#layer').innerHTML='<div class="ov" id="ov"><div class="drawer"><h1 style="font-size:20px">'+(o?esc(o.name)+' bearbeiten':'Neue Spachteltechnik')+'</h1>'+
+ '<div class="prev" id="tprev" style="background-image:url('+T.img+')"></div>'+
+ '<label class="f">Originalbild (frontal, gleichmässiges Licht, möglichst gross)<input type="file" id="tfile" accept="image/*"></label>'+
+ '<label class="f">Name<input id="tname" maxlength="60" value="'+esc(T.name)+'" placeholder="z. B. Kupfer gewischt"></label>'+
+ '<label class="f">Beschreibung<textarea id="tdesc" rows="2" maxlength="300" placeholder="Kurze Beschreibung für Kunden">'+esc(T.desc)+'</textarea></label>'+
+ '<label class="f">Kategorie<select id="tcat">'+CATS.map(c=>'<option'+(c===T.cat?' selected':'')+'>'+c+'</option>').join('')+'</select></label>'+
+ '<label class="f">Bildbreite in Wirklichkeit (cm)<input type="number" id="tcm" min="10" max="300" value="'+T.cm+'"></label>'+
+ '<label class="f">Farbton der Technik (Kunden können ihn im Wallstudio ändern)<input type="color" id="tcol" value="'+(/^#[0-9a-f]{6}$/i.test(T.color||'')?T.color:'#c8b89c')+'" style="height:44px;padding:4px"></label>'+rg('str','Zeichnung (wie stark die Spachtelzüge sichtbar sind)')+rg('gloss','Glanzgrad')+rg('metal','Metallglanz')+rg('grain','Körnung')+rg('relief','Relief (Höhen und Vertiefungen)')+
+ '<label class="sw"><input type="checkbox" id="ton" '+(T.on!==false?'checked':'')+'> Aktiv – im Wallstudio sichtbar</label>'+
+ '<div class="rowb">'+(o?'<button class="btn danger" id="tdel">Löschen</button>':'')+'<button class="btn" id="cancel">Abbrechen</button><button class="btn pri" id="tsave">Speichern</button></div></div></div>';
+ const close=()=>$('#layer').innerHTML='';$('#cancel').onclick=close;
+ $('#tfile').onchange=e=>{const f=e.target.files&&e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{const im=new Image();im.onload=()=>{const S=512,c=document.createElement('canvas');c.width=c.height=S;const x=c.getContext('2d'),m=Math.min(im.naturalWidth,im.naturalHeight);x.imageSmoothingQuality='high';x.drawImage(im,(im.naturalWidth-m)/2,(im.naturalHeight-m)/2,m,m,0,0,S,S);
+   const d=x.getImageData(0,0,S,S).data;let r=0,g=0,b=0;for(let i=0;i<d.length;i+=16){r+=d[i];g+=d[i+1];b+=d[i+2]}const n=d.length/16,h=v=>('0'+Math.round(v/n).toString(16)).slice(-2);T.color='#'+h(r)+h(g)+h(b);T.img=c.toDataURL('image/jpeg',.82);$('#tcol').value=T.color;$('#tprev').style.backgroundImage='url('+T.img+')'};im.onerror=()=>toast('Dieses Bild kann nicht gelesen werden.');im.src=rd.result};rd.readAsDataURL(f)};
+ $('#tsave').onclick=()=>{T.name=$('#tname').value.trim();T.desc=$('#tdesc').value.trim();T.cat=$('#tcat').value;T.cm=Math.max(10,Math.min(300,+$('#tcm').value||60));T.on=$('#ton').checked;T.color=$('#tcol').value;document.querySelectorAll('.drawer input[data-k]').forEach(i=>T[i.dataset.k]=+i.value);
+  if(!T.name){toast('Bitte einen Namen eingeben.');return}if(!T.img){toast('Bitte ein Originalbild hochladen.');return}
+  const old=cust.slice();if(o)cust=cust.map(t=>t.id===o.id?T:t);else{T.id=Date.now().toString(36)+Math.random().toString(36).slice(2,6);T.ord=cust.length+1;cust.push(T)}
+  if(!saveCust()){cust=old;return}close();go('techniken');toast('Gespeichert')};
+ if(o)$('#tdel').onclick=()=>ask('«'+o.name+'» wirklich löschen?','Löschen',()=>{cust=cust.filter(t=>t.id!==o.id);saveCust();go('techniken');toast('Gelöscht')})}
 let cur='dashboard';
 function go(v){if(!V[v])v='dashboard';cur=v;$('#view').innerHTML=V[v]();$('#side').classList.remove('open');document.querySelectorAll('.nav[data-v]').forEach(b=>b.setAttribute('aria-current',b.dataset.v===v?'page':'false'));try{if(location.hash.slice(1)!==v)location.hash=v}catch(e){}}
 async function loadUsers(){usersErr='';try{const r=await rpc('ws_list',{p_token:ses.token});if(!r||!r.ok){if(r&&/admin/i.test(r.error||'')){denied('Dieser Zugang hat keine Admin-Rechte.');return}throw new Error((r&&r.error)||'Fehler')}users=r.users||[]}catch(e){users=null;usersErr='Liste konnte nicht geladen werden: '+e.message}go(cur)}
@@ -138,7 +164,8 @@ async function act(fn,args){try{const r=await rpc(fn,Object.assign({p_token:ses.
 function showNew(name,code,pin,isNew){const url=location.origin+location.pathname.replace(/admin\.html$/,'');const txt='Zugang zum Bader Wallstudio\n'+url+'\nCode: '+code+'\nPIN: '+pin;
  newBox='<div class="newbox"><b>'+(isNew?'Neuer Zugang für ':'Neue PIN für ')+esc(name)+'</b><pre id="newtxt">'+esc(txt)+'</pre><div><button class="btn sm" id="copy">Text kopieren</button></div><span class="sub">Die PIN siehst du nur jetzt. Schick sie der Person, zum Beispiel per WhatsApp.</span></div>'}
 function ask(q,yes,fn){$('#layer').innerHTML='<div class="ov" id="ov"><div class="dlg"><b>'+esc(q)+'</b><span class="sub">Das lässt sich nicht rückgängig machen.</span><div class="rowb"><button class="btn" id="cancel">Abbrechen</button><button class="btn danger" id="yes">'+yes+'</button></div></div></div>';$('#cancel').onclick=()=>$('#layer').innerHTML='';$('#yes').onclick=()=>{$('#layer').innerHTML='';fn()}}
-document.addEventListener('click',async e=>{const t=e.target.closest('[data-v],[data-go],[data-act],#menu,#uadd,#copy,#ureload,#logout');if(!t)return;
+document.addEventListener('click',async e=>{const t=e.target.closest('[data-v],[data-go],[data-act],[data-tedit],#tnew,#menu,#uadd,#copy,#ureload,#logout');if(!t)return;
+ if(t.id==='tnew'){tEdit(null);return}if(t.dataset.tedit){tEdit(t.dataset.tedit);return}
  if(t.id==='menu')$('#side').classList.toggle('open');
  else if(t.id==='logout'){try{await rpc('ws_logout',{p_token:ses.token})}catch(x){}ses=null;save();users=null;newBox='';showLogin('')}
  else if(t.id==='ureload')loadUsers();
