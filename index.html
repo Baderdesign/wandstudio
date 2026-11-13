@@ -1664,7 +1664,7 @@ cv.addEventListener('pointermove',e=>{if(drag&&(drag.type==='h'||drag.type==='op
   else{const L=sel(),dx=p[0]-drag.last[0],dy=p[1]-drag.last[1];drag.last=p;
     if(L.mode==='flaeche'){L.ox+=dx;L.oy+=dy}else if(L.mode==='bordure'){L.ox+=dx;L.y+=dy}else{L.x+=dx;L.y+=dy}}
   schedule()});
-function showLoupe(e){const lp=$('#loupe');if(!lp)return;const r=cv.getBoundingClientRect(),k=PW/r.width,cp=(drag&&drag.cur)?drag.cur:[(e.clientX-r.left)*k,(e.clientY-r.top)*k],cx=cp[0],cy=cp[1],mag=3,src=120*k/mag;
+function showLoupe(e){const lp=$('#loupe');if(!lp)return;/* nur solange ein Punkt wirklich gezogen wird – sonst bleibt die Lupe nach dem Loslassen stehen */if(!drag||(drag.type!=='h'&&drag.type!=='op')){lp.hidden=true;return}const r=cv.getBoundingClientRect(),k=PW/r.width,cp=(drag&&drag.cur)?drag.cur:[(e.clientX-r.left)*k,(e.clientY-r.top)*k],cx=cp[0],cy=cp[1],mag=3,src=120*k/mag;
   const t=lp.getContext('2d');t.setTransform(1,0,0,1,0,0);t.fillStyle='#000';t.fillRect(0,0,240,240);t.imageSmoothingEnabled=true;t.drawImage(cv,cx-src/2,cy-src/2,src,src,0,0,240,240);
   t.strokeStyle='rgba(0,0,0,.7)';t.lineWidth=4;t.beginPath();t.moveTo(120,96);t.lineTo(120,144);t.moveTo(96,120);t.lineTo(144,120);t.stroke();t.strokeStyle=state.snapped?'#3ddc84':'#ffd23f';t.lineWidth=2;t.stroke();
   let x=e.clientX-60,y=e.clientY-160;if(y<8)y=e.clientY+50;x=Math.max(8,Math.min(window.innerWidth-128,x));lp.style.left=x+'px';lp.style.top=y+'px';lp.hidden=false}
@@ -2147,7 +2147,7 @@ $('#projBtn').onclick=()=>{$('#projSheet').hidden=false;listProjects()};$('#proj
 $('#projSave').onclick=()=>saveProject();
 $('#projNew').onclick=()=>{curProject=null;$('#projName').value='';walls=[null];curWall=0;state._thumb='';loadWall(blankStd());$('#projSheet').hidden=true;toast('Neues Projekt begonnen.',1500)};
 $('#closeOv').onclick=()=>{$('#overlay').hidden=true};
-const APP_VER=115,APP_LABEL='1.0.3';
+const APP_VER=116,APP_LABEL='1.0.3';
 
 /* ---------- KI: Wand antippen – läuft auf eigener Seite (ki.html), damit genug Speicher frei ist ---------- */
 const AI=(function(){
