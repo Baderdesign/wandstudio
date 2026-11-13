@@ -2100,7 +2100,7 @@ $('#projBtn').onclick=()=>{$('#projSheet').hidden=false;listProjects()};$('#proj
 $('#projSave').onclick=()=>saveProject();
 $('#projNew').onclick=()=>{curProject=null;$('#projName').value='';walls=[null];curWall=0;state._thumb='';loadWall(blankStd());$('#projSheet').hidden=true;toast('Neues Projekt begonnen.',1500)};
 $('#closeOv').onclick=()=>{$('#overlay').hidden=true};
-const APP_VER=106,APP_LABEL='1.0.3';
+const APP_VER=107,APP_LABEL='1.0.3';
 
 /* ---------- KI: Wand antippen – läuft auf eigener Seite (ki.html), damit genug Speicher frei ist ---------- */
 const AI=(function(){
@@ -2662,13 +2662,24 @@ const ACC=(function(){
   const fmt=d=>{if(!d)return'noch nie';const x=new Date(d);return x.toLocaleDateString('de-CH',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+x.toLocaleTimeString('de-CH',{hour:'2-digit',minute:'2-digit'})};
   function lock(msg){$('#accLock').hidden=false;$('#accMsg').textContent=msg||'';$('#accMsg').hidden=!msg;$('#accBtn').hidden=true;setTimeout(()=>{try{$('#accCode').focus()}catch(e){}},50)}
   function unlock(){$('#accLock').hidden=true;$('#accBtn').hidden=false;$('#accBtn').textContent=ses&&ses.admin?'Admin':(ses?ses.name:'')}
+  /* Zentrale Inhalte (eigene Techniken) aus Supabase holen und auf dem Gerät merken */
+  async function syncContent(){if(!ses||!ses.token)return;try{const r=await rpc('ws_content_list',{p_token:ses.token});if(!r||!r.ok||!Array.isArray(r.items))return;
+      let L=[];try{L=JSON.parse(localStorage.getItem('ws-custom-tech')||'[]')}catch(e){}if(!Array.isArray(L))L=[];
+      const sig=a=>JSON.stringify(a.map(t=>[t.id,t.upd||'',t.on!==false,!!t.pub]));const before=sig(L),srv=r.items.filter(i=>i.kind==='technik'),out=[];
+      for(const it of srv){const old=L.find(t=>t.id===it.id);let img=old&&old.upd===it.updated_at?old.img:null;
+        if(!img){const g=await rpc('ws_content_get',{p_token:ses.token,p_id:it.id});if(!g||!g.ok||!g.img)continue;img=g.img}
+        out.push(Object.assign({},it.data||{},{id:it.id,img,on:it.active!==false,ord:it.ord||0,upd:it.updated_at,pub:true}))}
+      L.filter(t=>t.pub!==true&&!srv.some(i=>i.id===t.id)).forEach(t=>out.push(t));
+      if(sig(out)===before)return;localStorage.setItem('ws-custom-tech',JSON.stringify(out));
+      let rl=false;try{if(performance.now()<20000&&!location.search&&!sessionStorage.getItem('ws-sync-rl')){sessionStorage.setItem('ws-sync-rl','1');rl=true}}catch(e){}
+      if(rl)location.reload();else toast('Neue Techniken sind beim nächsten Start verfügbar.',3500)}catch(e){}}
   async function check(){if(!ON)return;if(!ses||!ses.token){lock();return}
-    try{const r=await rpc('ws_check',{p_token:ses.token});if(r&&r.ok){ses.name=r.name;ses.admin=r.admin;ses.t=Date.now();save();unlock()}
+    try{const r=await rpc('ws_check',{p_token:ses.token});if(r&&r.ok){ses.name=r.name;ses.admin=r.admin;ses.t=Date.now();save();unlock();syncContent()}
       else{ses=null;save();lock(r&&r.error==='gesperrt'?'Dein Zugang wurde gesperrt. Bitte melde dich bei Bader Wandstudio.':'Dein Zugang ist nicht mehr gültig. Bitte neu anmelden.')}}
     catch(e){if(ses.t&&Date.now()-ses.t<14*864e5)unlock();else lock('Keine Verbindung. Für die Anmeldung braucht es Internet.')}}
   async function login(){const c=$('#accCode').value.trim(),p=$('#accPin').value.trim();if(!c||!p){lock('Bitte Code und PIN eingeben.');return}
     const b=$('#accGo');b.disabled=true;try{const r=await rpc('ws_login',{p_code:c,p_pin:p});
-      if(r&&r.ok){ses={token:r.token,name:r.name,admin:r.admin,t:Date.now()};save();$('#accPin').value='';unlock();toast('Willkommen, '+r.name+'!',2500)}
+      if(r&&r.ok){ses={token:r.token,name:r.name,admin:r.admin,t:Date.now()};save();$('#accPin').value='';unlock();toast('Willkommen, '+r.name+'!',2500);syncContent()}
       else lock(r&&r.error==='gesperrt'?'Dieser Zugang ist gesperrt.':'Code oder PIN falsch.')}
     catch(e){lock('Keine Verbindung zum Server. Bitte Internet prüfen.')}finally{b.disabled=false}}
   async function logout(){try{if(ses)await rpc('ws_logout',{p_token:ses.token})}catch(e){}ses=null;save();$('#accSheet').hidden=true;lock()}
