@@ -2289,7 +2289,7 @@ $('#projBtn').onclick=()=>{$('#projSheet').hidden=false;listProjects()};$('#proj
 $('#projSave').onclick=()=>saveProject();
 $('#projNew').onclick=()=>{curProject=null;$('#projName').value='';walls=[null];curWall=0;state._thumb='';loadWall(blankStd());$('#projSheet').hidden=true;toast('Neues Projekt begonnen.',1500)};
 $('#closeOv').onclick=()=>{$('#overlay').hidden=true};
-const APP_VER=130,APP_LABEL='1.0.3';
+const APP_VER=131,APP_LABEL='1.0.3';
 
 /* ---------- KI: Wand antippen – läuft auf eigener Seite (ki.html), damit genug Speicher frei ist ---------- */
 const AI=(function(){
@@ -2577,15 +2577,24 @@ vec4 floorMat(vec2 fp,vec3 n,vec3 L,vec3 V){vec3 c=uFlC;float sp=0.,ex=40.,rf=0.
   float d=max(dot(n,L),0.)*.75+.22;vec3 R=reflect(-V,n);float fr=rf+(1.-rf)*pow(1.-max(dot(n,V),0.),5.)*rf*4.;
   vec3 col=lin(c)*d+pow(max(dot(n,H),0.),ex)*sp*(t>4.5?lin(uFlC)*1.6:vec3(1.))+env(R,t<4.5?.05:.35)*fr*(t>4.5?lin(uFlC):vec3(1.))*.5;return vec4(col,1.);}
 void main(){if(vF>1.5){vec3 n=normalize(vN);vec3 L=normalize(uLight-vP);vec3 V=normalize(uCam-vP),Hh=normalize(L+V);float dif=max(dot(n,L),0.);vec3 c;float sp=0.;
-    if(vF>20.5){if(vF>25.5){float rr=length(vUV-.5)*2.;gl_FragColor=vec4(0.,0.,0.,(1.-smoothstep(.15,1.,rr))*.62);return;}
-      float hemi=n.y*.5+.5,NdV=max(dot(n,V),0.);vec3 an=abs(n);vec2 uvp=an.y>an.x&&an.y>an.z?vP.xz:(an.x>an.z?vP.zy:vP.xy);vec3 col;
-      if(vF<21.5||vF>24.5){float mel=vn(uvp*380.)*.55+vn(uvp*1300.)*.45,wv=sin(uvp.x*2400.)*sin(uvp.y*2400.),fold=fb(uvp*7.);
-        c=(vF<21.5?vec3(.58,.47,.33):vec3(.52,.34,.15))*(.84+.24*mel+.03*wv)*(.9+.2*fold);col=c*(dif*.6+.1+.34*hemi)+pow(1.-NdV,3.)*.09*vec3(1.,.97,.92);}
-      else if(vF<22.5){float g=fb(uvp*55.),cr=vn(uvp*900.);c=vec3(.19,.095,.045)*(.82+.34*g);vec3 R=reflect(-V,n);
-        col=c*(dif*.66+.08+.28*hemi)+pow(max(dot(n,Hh),0.),38.)*.3*(.55+.9*cr)+env(R,.35)*pow(1.-NdV,4.)*.14;}
-      else if(vF<23.5){float gr=fb(vec2((vP.x+vP.z)*14.,vP.y*2.5+fb(vP.xz*6.)*.8));c=mix(vec3(.36,.22,.11),vec3(.56,.38,.2),gr);vec3 R=reflect(-V,n);
-        col=c*(dif*.7+.1+.24*hemi)+pow(max(dot(n,Hh),0.),50.)*.16+env(R,.3)*pow(1.-NdV,5.)*.08;}
-      else{vec3 R=reflect(-V,n);col=env(R,.12)*vec3(.74,.72,.68)*.85+pow(max(dot(n,Hh),0.),120.)*.9+vec3(.02);}
+    if(vF>20.5){if(vF>25.5&&vF<26.5){float rr=length(vUV-.5)*2.;gl_FragColor=vec4(0.,0.,0.,(1.-smoothstep(.15,1.,rr))*.62);return;}
+      float hemi=n.y*.5+.5,NdV=max(dot(n,V),0.);vec3 an=abs(n);vec2 uvp=an.y>an.x&&an.y>an.z?vP.xz:(an.x>an.z?vP.zy:vP.xy);vec3 col;vec3 R=reflect(-V,n);float spH=max(dot(n,Hh),0.);
+      if(vF<21.5||(vF>24.5&&vF<25.5)||(vF>35.5&&vF<36.5)){float mel=vn(uvp*380.)*.55+vn(uvp*1300.)*.45,wv=sin(uvp.x*2400.)*sin(uvp.y*2400.),fold=fb(uvp*7.);
+        c=(vF<21.5?vec3(.66,.58,.46):(vF<25.5?vec3(.52,.34,.15):vec3(.50,.42,.32)))*(.82+.28*mel+.03*wv)*(.92+.16*fold);col=c*(dif*.6+.1+.34*hemi)+pow(1.-NdV,3.)*.09*vec3(1.,.97,.92);}
+      else if(vF<22.5){float g=fb(uvp*55.),cr=vn(uvp*900.);c=vec3(.19,.095,.045)*(.82+.34*g);
+        col=c*(dif*.66+.08+.28*hemi)+pow(spH,38.)*.3*(.55+.9*cr)+env(R,.35)*pow(1.-NdV,4.)*.14;}
+      else if(vF<23.5){float gr=fb(vec2((vP.x+vP.z)*14.,vP.y*2.5+fb(vP.xz*6.)*.8));c=mix(vec3(.47,.31,.15),vec3(.68,.50,.28),gr);
+        col=c*(dif*.7+.1+.24*hemi)+pow(spH,50.)*.16+env(R,.3)*pow(1.-NdV,5.)*.08;}
+      else if(vF<24.5){col=env(R,.12)*vec3(.74,.72,.68)*.85+pow(spH,120.)*.9+vec3(.02);}
+      else if(vF<27.5){c=vec3(.49,.46,.41)*(.97+.05*vn(uvp*90.));col=c*(dif*.62+.12+.3*hemi)+pow(spH,60.)*.07+env(R,.25)*pow(1.-NdV,5.)*.05;}
+      else if(vF<28.5){c=vec3(.042,.045,.044)*(.95+.08*vn(uvp*120.));col=c*(dif*.7+.15+.3*hemi)+pow(spH,40.)*.05+env(R,.3)*pow(1.-NdV,4.)*.05;}
+      else if(vF<29.5){float v1=fb(uvp*3.+fb(uvp*9.)*1.6);c=vec3(.60,.58,.55)*(.9+.14*vn(uvp*200.))*(1.-.12*smoothstep(.55,.62,v1)*(1.-smoothstep(.62,.7,v1)));col=c*(dif*.66+.12+.28*hemi)+pow(spH,70.)*.12;}
+      else if(vF<30.5){c=vec3(.018,.018,.017);col=c*(dif*.8+.3+.3*hemi)+pow(spH,45.)*.18+env(R,.3)*pow(1.-NdV,4.)*.08;}
+      else if(vF<31.5){float fo=fb(uvp*9.);c=vec3(.86,.85,.83)*(.9+.14*fo)*(.97+.04*vn(uvp*700.));col=c*(dif*.55+.14+.34*hemi);}
+      else if(vF<32.5){float wv2=vn(uvp*500.);c=vec3(1.,.92,.78)*(.94+.08*wv2);col=c*(.78+.22*dif);}
+      else if(vF<33.5){c=vec3(.56,.56,.54)*(.82+.28*vn(uvp*160.)+.08*fb(uvp*12.));col=c*(dif*.62+.12+.3*hemi);}
+      else if(vF<34.5){float lf=vn(uvp*90.);c=mix(vec3(.10,.15,.09),vec3(.34,.41,.31),lf)*(.75+.4*fb(uvp*30.));col=c*(dif*.6+.14+.34*hemi)+pow(spH,30.)*.05*lf;}
+      else{float wv3=sin(uvp.x*900.)*sin(uvp.y*900.);c=vec3(.55,.48,.38)*(.86+.12*wv3+.14*vn(uvp*400.));col=c*(dif*.55+.14+.34*hemi);}
       gl_FragColor=vec4(pow(clamp(col,0.,1.),vec3(1./2.2)),1.);return;}
     if(vF>6.5){if(vF<7.5){c=uKCol;sp=pow(max(dot(n,Hh),0.),18.)*.05;}else if(vF<8.5){c=vec3(.011);sp=pow(max(dot(n,Hh),0.),40.)*.08;}
       else if(vF<9.5){c=vec3(.42,.43,.44);sp=pow(max(dot(n,Hh),0.),70.)*.7+.04;}else if(vF<10.5){c=vec3(.004,.0045,.005);sp=pow(max(dot(n,Hh),0.),160.)*.6+pow(1.-max(dot(n,V),0.),5.)*.05;}
@@ -2677,13 +2686,18 @@ void main(){vec3 n0=normalize(vN);vec3 n=n0;if(uHas>.5){float dx=hh(vUV+vec2(uTx
           return[[cx+P[0],cy+P[1],cz+P[2]],[N[0]/l,N[1]/l,N[2]/l]]};
         for(let i=0;i<nu;i++)for(let j=0;j<nv;j++){const A=pt(i,j+1),B=pt(i,j),C=pt(i+1,j),D=pt(i+1,j+1);q(A[0],B[0],C[0],D[0],[A[1],B[1],C[1],D[1]],mf)}};
       /* Fuss: konischer Zylinder mit weichen Normalen */
-      const cyl=(cx,cz,ya,yb,ra,rb,mf,n)=>{n=n||10;for(let j=0;j<n;j++){const a0=2*Math.PI*j/n,a1=2*Math.PI*(j+1)/n,c0=Math.cos(a0),s0=Math.sin(a0),c1=Math.cos(a1),s1=Math.sin(a1);
+      const cyl=(cx,cz,ya,yb,ra,rb,mf,n,cap)=>{n=n||10;if(cap)for(let j=0;j<n;j++){const a0=2*Math.PI*j/n,a1=2*Math.PI*(j+1)/n;q([cx,yb,cz],[cx+rb*Math.cos(a1),yb,cz+rb*Math.sin(a1)],[cx+rb*Math.cos(a0),yb,cz+rb*Math.sin(a0)],[cx,yb,cz],[0,1,0],cap===true?mf:cap)}for(let j=0;j<n;j++){const a0=2*Math.PI*j/n,a1=2*Math.PI*(j+1)/n,c0=Math.cos(a0),s0=Math.sin(a0),c1=Math.cos(a1),s1=Math.sin(a1);
           q([cx+ra*c1,ya,cz+ra*s1],[cx+ra*c0,ya,cz+ra*s0],[cx+rb*c0,yb,cz+rb*s0],[cx+rb*c1,yb,cz+rb*s1],[[c1,0,s1],[c0,0,s0],[c0,0,s0],[c1,0,s1]],mf)}};
+      /* Stange von A nach B (Querschnitt quadratisch), für Kreuzstreben und Fussringe */
+      const bar=(A,B,th,mf)=>{const d=[B[0]-A[0],B[1]-A[1],B[2]-A[2]],l=Math.hypot(...d)||1,u=[d[0]/l,d[1]/l,d[2]/l],up=Math.abs(u[1])>.9?[1,0,0]:[0,1,0];
+        const cr=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],nz=v=>{const k=Math.hypot(...v)||1;return v.map(x=>x/k)},s1=nz(cr(u,up)),s2=nz(cr(s1,u)),h2=th/2;
+        const P=(o,a,b)=>[o[0]+s1[0]*a+s2[0]*b,o[1]+s1[1]*a+s2[1]*b,o[2]+s1[2]*a+s2[2]*b];
+        [[s2,1,1,-1,1],[s1,1,-1,1,1],[s2.map(x=>-x),-1,-1,1,-1],[s1.map(x=>-x),-1,1,-1,-1]].forEach(([nn,a1,b1,a2,b2])=>q(P(A,a1*h2,b1*h2),P(B,a1*h2,b1*h2),P(B,a2*h2,b2*h2),P(A,a2*h2,b2*h2),nn,mf))};
       /* Weicher Kontaktschatten am Boden */
       const blob=(xa,xb,za,zb)=>{const yy=-h+.02;glass([xa,yy,zb],[xb,yy,zb],[xb,yy,za],[xa,yy,za],[0,1,0],26)};
       const box=(x0,x1,y0,y1,z0,z1,mf,mo)=>{mo=mo??mf;q([x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1],[0,0,1],mf);q([x1,y0,z1],[x1,y0,z0],[x1,y1,z0],[x1,y1,z1],[1,0,0],mo);q([x0,y0,z0],[x0,y0,z1],[x0,y1,z1],[x0,y1,z0],[-1,0,0],mo);
         q([x0,y1,z1],[x1,y1,z1],[x1,y1,z0],[x0,y1,z0],[0,1,0],mo);q([x0,y0,z0],[x1,y0,z0],[x1,y0,z1],[x0,y0,z1],[0,-1,0],mo);q([x1,y0,z0],[x0,y0,z0],[x0,y1,z0],[x1,y1,z0],[0,0,-1],mo)};
-      fn(box,q,glass,pad,cyl,blob);let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9,y0=1e9,y1=-1e9;Q.concat(G.filter(e=>e[5]!==26)).forEach(e=>{for(let i=0;i<4;i++){const P=e[i];x0=Math.min(x0,P[0]);x1=Math.max(x1,P[0]);z0=Math.min(z0,P[2]);z1=Math.max(z1,P[2]);y0=Math.min(y0,P[1]);y1=Math.max(y1,P[1])}});if(x0>x1)return;
+      fn(box,q,glass,pad,cyl,blob,bar);let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9,y0=1e9,y1=-1e9;Q.concat(G.filter(e=>e[5]!==26)).forEach(e=>{for(let i=0;i<4;i++){const P=e[i];x0=Math.min(x0,P[0]);x1=Math.max(x1,P[0]);z0=Math.min(z0,P[2]);z1=Math.max(z1,P[2]);y0=Math.min(y0,P[1]);y1=Math.max(y1,P[1])}});if(x0>x1)return;
       /* Wandmöbel (hängen über dem Boden) bleiben an der Wand und werden nicht gedreht */
       const wall=y0>-h+.3,ro=wall?0:(o[2]||0),cx=(x0+x1)/2,cz=(z0+z1)/2,cs=Math.cos(ro),sn=Math.sin(ro),hx=(x1-x0)/2,hz=(z1-z0)/2,ozc=wall?0:Math.min(oz,Math.max(0,dz-.1-Math.min(hx,hz))-cz) /* im Raum halten, auch wenn er verkleinert wird */;
       const T=P=>{const dx=P[0]-cx,dz2=P[2]-cz;return[cx+ox+dx*cs+dz2*sn,P[1],cz+ozc-dx*sn+dz2*cs]},TN1=n=>[n[0]*cs+n[2]*sn,n[1],-n[0]*sn+n[2]*cs],TN=n=>Array.isArray(n[0])?n.map(TN1):TN1(n);
@@ -2692,43 +2706,66 @@ void main(){vec3 n0=normalize(vN);vec3 n=n0;if(uHas>.5){float dx=hh(vUV+vec2(uTx
       if(fSel===k&&v.furn&&!wall){const e=.07,t=.035,yy=-h+.012,R=(a,b,c,d)=>q0(T([a,yy,b]),T([c,yy,b]),T([c,yy,d]),T([a,yy,d]),[0,1,0],15);
         R(x0-e,z0-e,x1+e,z0-e+t);R(x0-e,z1+e-t,x1+e,z1+e);R(x0-e,z0-e,x0-e+t,z1+e);R(x1+e-t,z0-e,x1+e,z1+e)}};
     const plant=(box,x,z)=>{box(x-.18,x+.18,Y(0),Y(.38),z-.18,z+.18,DK);[[0,.7,.0],[-.1,.95,.06],[.1,.85,-.07],[0,1.15,.02]].forEach(([dx,yy,dzz])=>box(x+dx-.17,x+dx+.17,Y(yy-.25),Y(yy+.1),z+dzz-.17,z+dzz+.17,GRN))};
+    const FBC=21,MB=30,OK=23,GG=27,LMP=32,STN=33,LEAF=34,SIS=35,TP=36,LN=31;
+    /* Sofa/Sessel wie auf dem Foto: Bouclé, kantig-weiche Polster, schlanke schwarze Füsse, keine Zierkissen */
+    const couch=(pad,cyl,blob,x0,x1,z0,z1,n)=>{const ax=.2,sx0=x0+ax-.01,sx1=x1-ax+.01,cw=(sx1-sx0)/n;
+      blob(x0-.2,x1+.2,z0-.08,z1+.25);[[x0+.12,z0+.12],[x1-.12,z0+.12],[x0+.12,z1-.12],[x1-.12,z1-.12]].forEach(([lx,lz])=>cyl(lx,lz,Y(0),Y(.13),.009,.014,MB,8));
+      pad(x0+.02,x1-.02,Y(.12),Y(.31),z0+.02,z1-.03,.16,FBC,{nu:6,nv:16});
+      pad(x0+.03,x1-.03,Y(.25),Y(.80),z0,z0+.2,.2,FBC,{nu:8,nv:16});
+      pad(x0,x0+ax,Y(.12),Y(.62),z0+.01,z1-.02,.22,FBC,{nu:8,nv:16});pad(x1-ax,x1,Y(.12),Y(.62),z0+.01,z1-.02,.22,FBC,{nu:8,nv:16});
+      for(let i=0;i<n;i++){const a=sx0+cw*i+.005,b=sx0+cw*(i+1)-.005;pad(a,b,Y(.29),Y(.46),z0+.2,z1,.28,FBC,{nu:8,nv:16});pad(a,b,Y(.43),Y(.78),z0+.12,z0+.31,.32,FBC,{nu:8,nv:16,rx:-.08})}};
+    /* Olivenbäumchen im Betontopf */
+    const olive=(pad,cyl,x,z,bar)=>{cyl(x,z,Y(0),Y(.38),.17,.2,STN,16,DK);cyl(x,z,Y(.36),Y(1.05),.02,.014,22,8);
+      let sd=7;const rn=()=>{sd=(sd*16807)%2147483647;return sd/2147483647};
+      if(bar)[[-.16,1.3,.04],[.17,1.28,-.05],[.03,1.48,.08],[-.1,1.45,-.1],[.12,1.18,.1]].forEach(([dx,yy,dzz])=>bar([x,Y(1.02),z],[x+dx,Y(yy),z+dzz],.012,22));
+      for(let i=0;i<110;i++){const a=rn()*6.283,u=rn()*2-1,rr=Math.pow(rn(),.4),cx=x+Math.sqrt(1-u*u)*Math.cos(a)*.31*rr,cz=z+Math.sqrt(1-u*u)*Math.sin(a)*.27*rr,cy=1.28+u*.27*rr,r=.035+rn()*.03;
+        pad(cx-r,cx+r,Y(cy-r*.8),Y(cy+r*.8),cz-r,cz+r,1,LEAF,{nu:4,nv:6})}};
+    /* Tischlampe: schwarzer Fuss und Stiel, leuchtender Stoffschirm */
+    const tlamp=(cyl,x,z,y,hS,rS)=>{cyl(x,z,Y(y),Y(y+.015),.07,.07,MB,14,MB);cyl(x,z,Y(y+.015),Y(y+hS),.006,.006,MB,6);cyl(x,z,Y(y+hS),Y(y+hS+rS*1.4),rS,rS,LMP,18)};
     const chair=(box,x0,x1,z0,z1)=>{box(x0,x1,Y(.1),Y(.42),z0,z1,FAB);box(x0,x1,Y(.42),Y(.82),z0,z0+.18,FAB);box(x0,x0+.14,Y(.42),Y(.6),z0,z1,FAB);box(x1-.14,x1,Y(.42),Y(.6),z0,z1,FAB);box(x0+.05,x1-.05,Y(0),Y(.1),z0+.05,z1-.05,DK)};
     const wcBowl=(box,x)=>{box(x-.19,x+.19,Y(0),Y(.4),.2,.6,CER);box(x-.2,x+.2,Y(.4),Y(.43),.18,.64,CER);box(x-.24,x+.24,Y(.75),Y(1.05),.002,.04,CER);box(x-.1,x+.1,Y(.9),Y(1.0),.04,.05,ST)};
     if(T==='wohnen'){const sw=Math.min(2.3,w*1.1),x0=-sw/2,x1=sw/2,z0=.22,z1=1.15;
-      item('rug',0,box=>box(-1.5,1.5,Y(0),Y(.012),.95,2.75,FAB));
-      item('sofa',0,(box,q,glass,pad,cyl,blob)=>{const FB=21,AC=25,OAK=23,ax=.22,sx0=x0+ax-.02,sx1=x1-ax+.02,cw=(sx1-sx0)/3;
-        blob(x0-.22,x1+.22,z0-.1,z1+.3);
-        [[x0+.1,z0+.1],[x1-.1,z0+.1],[x0+.1,z1-.1],[x1-.1,z1-.1]].forEach(([lx,lz])=>cyl(lx,lz,Y(0),Y(.12),.016,.03,OAK,10));
-        pad(x0+.03,x1-.03,Y(.09),Y(.33),z0+.02,z1-.05,.22,FB,{nu:8,nv:16});            /* Sockel */
-        pad(x0+.05,x1-.05,Y(.22),Y(.80),z0,z0+.16,.3,FB,{nu:10,nv:16});                /* Rückenrahmen */
-        pad(x0,x0+ax,Y(.085),Y(.67),z0+.01,z1-.03,.42,FB,{nu:12,nv:18});                /* Armlehnen */
-        pad(x1-ax,x1,Y(.085),Y(.67),z0+.01,z1-.03,.42,FB,{nu:12,nv:18});
-        for(let i=0;i<3;i++){const a=sx0+cw*i+.006,b=sx0+cw*(i+1)-.006;
-          pad(a,b,Y(.30),Y(.49),z0+.2,z1,.36,FB,{nu:10,nv:18});                        /* Sitzkissen */
-          pad(a-.003,b+.003,Y(.385),Y(.405),z0+.197,z1+.004,.3,FB,{nu:4,nv:18});       /* Keder (Naht) */
-          pad(a,b,Y(.45),Y(.93),z0+.09,z0+.34,.42,FB,{nu:12,nv:18,rx:-.1});            /* Rückenkissen */
-          pad(a-.002,b+.002,Y(.68),Y(.70),z0+.085,z0+.345,.34,FB,{nu:4,nv:18,rx:-.1})}
-        pad(sx0+.05,sx0+.47,Y(.47),Y(.89),z0+.3,z0+.46,.5,AC,{nu:10,nv:16,rx:-.28,rz:.14});   /* Zierkissen */
-        pad(sx1-.42,sx1-.04,Y(.47),Y(.85),z0+.3,z0+.44,.5,22,{nu:10,nv:16,rx:-.3,rz:-.17})});
-      item('table',0,box=>{box(-.6,.6,Y(.36),Y(.41),1.65,2.25,WD);[[-.55,1.7],[.52,1.7],[-.55,2.17],[.52,2.17]].forEach(([x,z])=>box(x,x+.035,Y(0),Y(.36),z,z+.035,DK))});
-      item('chair',0,box=>chair(box,w-1.05,w-.2,1.75,2.6));
-      item('side',0,box=>{box(w-1.05,w-.08,Y(.12),Y(.75),.02,.47,WD);box(w-1.0,w-.13,Y(0),Y(.12),.05,.42,DK)});
-      item('lamp',0,box=>{const x=-w+.35,z=.45;box(x-.15,x+.15,Y(0),Y(.03),z-.15,z+.15,DK);box(x-.015,x+.015,Y(.03),Y(1.45),z-.015,z+.015,ST);box(x-.2,x+.2,Y(1.45),Y(1.75),z-.2,z+.2,LIN)});
-      item('plant',0,box=>plant(box,-w+.9,.35))}
+      item('rug',0,box=>{box(-1.5,1.5,Y(0),Y(.012),.95,2.75,SIS);box(-1.5,1.5,Y(.0005),Y(.0125),.95,1.0,TP);box(-1.5,1.5,Y(.0005),Y(.0125),2.7,2.75,TP)});
+      item('sofa',0,(box,q,glass,pad,cyl,blob)=>couch(pad,cyl,blob,x0,x1,z0,z1,3));
+      item('table',0,(box,q,glass,pad,cyl,blob,bar)=>{blob(-.75,.75,1.55,2.4);box(-.6,.6,Y(.365),Y(.41),1.65,2.25,OK);const L=[[-.57,1.68],[.57,1.68],[-.57,2.22],[.57,2.22]];
+        L.forEach(([x,z])=>bar([x,Y(0),z],[x,Y(.365),z],.022,MB));bar([-.57,Y(.35),1.68],[.57,Y(.35),1.68],.02,MB);bar([-.57,Y(.35),2.22],[.57,Y(.35),2.22],.02,MB);bar([-.57,Y(.35),1.68],[-.57,Y(.35),2.22],.02,MB);bar([.57,Y(.35),1.68],[.57,Y(.35),2.22],.02,MB);
+        bar([-.57,Y(.13),1.68],[.57,Y(.13),2.22],.016,MB);bar([-.57,Y(.13),2.22],[.57,Y(.13),1.68],.016,MB);bar([-.57,Y(.13),1.68],[-.57,Y(.13),2.22],.016,MB);bar([.57,Y(.13),1.68],[.57,Y(.13),2.22],.016,MB);
+        cyl(-.12,1.9,Y(.41),Y(.45),.08,.06,STN,14,STN);box(.12,.42,Y(.41),Y(.44),1.82,2.02,TP);box(.13,.41,Y(.44),Y(.47),1.84,2.0,22)});
+      item('chair',0,(box,q,glass,pad,cyl,blob)=>couch(pad,cyl,blob,w-1.12,w-.1,1.7,2.6,1));
+      item('side',0,(box,q,glass,pad,cyl,blob,bar)=>{const x0=w-1.56,x1=w-.02,zf=.4505;blob(x0-.1,x1+.1,0,.6);box(x0,x1,Y(.17),Y(.75),.02,.45,GG);box(x0-.003,x1+.003,Y(.75),Y(.77),.015,.455,GG);
+        const ln=(xa,xb,ya,yb)=>q([xa,ya,zf],[xb,ya,zf],[xb,yb,zf],[xa,yb,zf],[0,0,1],DK);[1,2].forEach(i=>{const x=x0+(x1-x0)*i/3;ln(x-.002,x+.002,Y(.19),Y(.74))});ln(x0+.01,x1-.01,Y(.185),Y(.19));ln(x0+.01,x1-.01,Y(.737),Y(.741));
+        [[x0+.02,.05],[x1-.02,.05],[x0+.02,.42],[x1-.02,.42]].forEach(([x,z])=>bar([x,Y(0),z],[x,Y(.17),z],.016,MB));bar([x0+.02,Y(.165),.05],[x1-.02,Y(.165),.05],.014,MB);bar([x0+.02,Y(.165),.42],[x1-.02,Y(.165),.42],.014,MB);
+        const vx=x0+.25,vz=.24;pad(vx-.07,vx+.07,Y(.77),Y(.95),vz-.07,vz+.07,.7,STN,{nu:8,nv:12});[[0,1.07,0,.11],[-.1,1.02,.03,.08],[.1,1.04,-.02,.09],[.03,1.16,.02,.08],[-.13,1.12,-.03,.06],[.14,1.13,.04,.06]].forEach(([dx,yy,dzz,r])=>pad(vx+dx-r,vx+dx+r,Y(yy-r*.8),Y(yy+r*.8),vz+dzz-r,vz+dzz+r,.9,LEAF,{nu:6,nv:9}));
+        tlamp(cyl,x1-.3,.24,.77,.24,.1)});
+      item('lamp',0,(box,q,glass,pad,cyl)=>{const x=-w+.35,z=.45;cyl(x,z,Y(0),Y(.03),.16,.16,MB,20,MB);cyl(x,z,Y(.03),Y(1.42),.011,.011,MB,8);cyl(x,z,Y(1.42),Y(1.72),.2,.2,LMP,24)});
+      item('plant',0,(box,q,glass,pad,cyl,blob,bar)=>olive(pad,cyl,-w+.9,.35,bar))}
     else if(T==='kueche'){const iw=Math.min(2.4,w*1.1);
-      item('island',0,box=>{box(-iw/2,iw/2,Y(0),Y(.08),1.62,2.38,DK);box(-iw/2,iw/2,Y(.08),Y(.88),1.6,2.4,KC);box(-iw/2-.03,iw/2+.03,Y(.88),Y(.92),1.57,2.43,ST)});
-      item('stools',0,box=>[-.6,0,.6].forEach(x=>{box(x-.17,x+.17,Y(.62),Y(.67),2.5,2.84,WD);box(x-.02,x+.02,Y(0),Y(.62),2.65,2.69,ST)}));
+      item('island',0,(box,q,glass,pad,cyl,blob,bar)=>{blob(-iw/2-.15,iw/2+.15,1.5,2.55);box(-iw/2+.03,iw/2-.03,Y(0),Y(.06),1.64,2.36,MB);box(-iw/2,iw/2,Y(.06),Y(.88),1.6,2.4,28);box(-iw/2-.02,iw/2+.02,Y(.88),Y(.92),1.58,2.42,29);
+        const zf=2.4005,ln=(xa,xb,ya,yb,zz)=>q([xa,ya,zz],[xb,ya,zz],[xb,yb,zz],[xa,yb,zz],[0,0,1],MB);[1,2].forEach(i=>{const x=-iw/2+iw*i/3;ln(x-.002,x+.002,Y(.08),Y(.86),zf)});ln(-iw/2,iw/2,Y(.845),Y(.86),zf);
+        box(-iw/2+.2,-iw/2+.8,Y(.92),Y(.925),1.75,2.25,30);box(iw/2-.65,iw/2-.25,Y(.905),Y(.921),1.8,2.2,9);cyl(iw/2-.45,1.7,Y(.92),Y(1.2),.014,.014,MB,8);bar([iw/2-.45,Y(1.2),1.7],[iw/2-.45,Y(1.2),1.86],.026,MB);bar([iw/2-.45,Y(1.2),1.86],[iw/2-.45,Y(1.12),1.86],.022,MB)});
+      item('stools',0,(box,q,glass,pad,cyl,blob,bar)=>[-.6,0,.6].forEach(x=>{const z=2.67;cyl(x,z,Y(.635),Y(.67),.17,.17,OK,20,OK);cyl(x,z,Y(.62),Y(.635),.15,.15,MB,16);
+        [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([a,b])=>bar([x+a*.135,Y(0),z+b*.135],[x+a*.11,Y(.625),z+b*.11],.018,MB));
+        const N=12;for(let i=0;i<N;i++){const a0=2*Math.PI*i/N,a1=2*Math.PI*(i+1)/N;bar([x+.15*Math.cos(a0),Y(.25),z+.15*Math.sin(a0)],[x+.15*Math.cos(a1),Y(.25),z+.15*Math.sin(a1)],.014,MB)}}));
       item('dining',0,box=>{const xa=-w+.75,xb=xa+.9,z0=Math.min(D-1.8,2.7),z1=z0+1.6;box(xa,xb,Y(.72),Y(.76),z0,z1,WD);[[xa+.04,z0+.04],[xb-.08,z0+.04],[xa+.04,z1-.08],[xb-.08,z1-.08]].forEach(([x,z])=>box(x,x+.04,Y(0),Y(.72),z,z+.04,DK));
         [z0+.3,z0+.95].forEach(z=>{[[xa-.5,xa-.08,-1],[xb+.08,xb+.5,1]].forEach(([a,c,sg])=>{box(a,c,Y(.44),Y(.48),z,z+.42,WD);[[a+.02,z+.02],[c-.06,z+.36],[a+.02,z+.36],[c-.06,z+.02]].forEach(([lx,lz])=>box(lx,lx+.04,Y(0),Y(.44),lz,lz+.04,DK));const bx=sg<0?a:c-.04;box(bx,bx+.04,Y(.48),Y(.9),z,z+.42,WD)})})});
-      item('plant',0,box=>plant(box,-w+.4,.4))}
+      item('plant',0,(box,q,glass,pad,cyl,blob,bar)=>olive(pad,cyl,-w+.45,.4,bar))}
     else if(T==='schlafen'){const bw=1.8,bl=2.1;
-      item('rug',0,box=>box(-1.3,1.3,Y(0),Y(.012),1.2,2.9,FAB));
-      item('bed',0,box=>{box(-bw/2,bw/2,Y(.06),Y(.32),.05,bl,FAB);box(-bw/2+.03,bw/2-.03,Y(.32),Y(.54),.06,bl-.03,LIN);box(-bw/2-.04,bw/2+.04,Y(.06),Y(1.05),0,.08,FAB);box(-bw/2+.12,-.06,Y(.54),Y(.66),.12,.55,LIN);box(.06,bw/2-.12,Y(.54),Y(.66),.12,.55,LIN);box(-bw/2+.02,bw/2-.02,Y(.54),Y(.58),.95,bl-.02,FAB)});
-      [['nightL',-1],['nightR',1]].forEach(([nk,sg])=>item(nk,0,box=>{const x=sg*(bw/2+.32);box(x-.24,x+.24,Y(.22),Y(.5),.02,.42,WD);[[x-.22,.04],[x+.2,.04],[x-.22,.38],[x+.2,.38]].forEach(([lx,lz])=>box(lx,lx+.02,Y(0),Y(.22),lz,lz+.02,DK))}));
-      item('ward2',0,(box,q)=>{const x1=F('ward')?w-1.66:w-.02,x0=x1-.8,zf=.6205;box(x0,x1,Y(0),Y(2.0),.02,.62,LIN);const ln=(xa,xb,ya,yb)=>q([xa,ya,zf],[xb,ya,zf],[xb,yb,zf],[xa,yb,zf],[0,0,1],DK);ln((x0+x1)/2-.002,(x0+x1)/2+.002,Y(.03),Y(1.98));[-1,1].forEach(sg=>{const x=(x0+x1)/2+sg*.035;ln(x-.006,x+.006,Y(.08),Y(.95))})});
-      item('ward',0,(box,q)=>{const x0=w-1.62,x1=w-.02,zf=.6205;box(x0,x1,Y(0),Y(2.0),.02,.62,LIN);const ln=(xa,xb,ya,yb)=>q([xa,ya,zf],[xb,ya,zf],[xb,yb,zf],[xa,yb,zf],[0,0,1],DK);[1,2,3].forEach(i=>{const x=x0+(x1-x0)*i/4;ln(x-.002,x+.002,Y(.03),Y(1.98))});ln(x0+.01,x1-.01,Y(.998),Y(1.002));[[.25,-1],[.25,1],[.75,-1],[.75,1]].forEach(([f,sg])=>{const x=x0+(x1-x0)*f+sg*.035;ln(x-.006,x+.006,Y(.08),Y(.95))})});
-      item('dress',0,box=>{box(-w+.03,-w+.78,Y(.08),Y(.82),.02,.5,WD);box(-w+.07,-w+.74,Y(0),Y(.08),.05,.46,DK)});
-      item('chair',0,box=>chair(box,-w+.25,-w+1.05,1.0,1.8))}
+      item('rug',0,box=>{box(-1.3,1.3,Y(0),Y(.012),1.2,2.9,SIS);box(-1.3,1.3,Y(.0005),Y(.0125),1.2,1.25,TP);box(-1.3,1.3,Y(.0005),Y(.0125),2.85,2.9,TP)});
+      item('bed',0,(box,q,glass,pad,cyl,blob)=>{blob(-bw/2-.15,bw/2+.15,0,bl+.25);pad(-bw/2,bw/2,Y(.02),Y(.32),.06,bl,.1,FBC,{nu:6,nv:16});pad(-bw/2-.02,bw/2+.02,Y(.06),Y(1.12),0,.11,.18,FBC,{nu:8,nv:16});
+        pad(-bw/2+.06,bw/2-.06,Y(.28),Y(.5),.1,bl-.04,.1,LN,{nu:6,nv:16});pad(-bw/2+.03,bw/2-.03,Y(.47),Y(.54),.5,bl-.01,.14,LN,{nu:4,nv:16});
+        pad(-bw/2+.14,-.04,Y(.5),Y(.7),.12,.42,.55,LN,{nu:8,nv:12,rx:-.35});pad(.04,bw/2-.14,Y(.5),Y(.7),.12,.42,.55,LN,{nu:8,nv:12,rx:-.35});
+        pad(-bw/2-.03,bw/2+.03,Y(.525),Y(.57),1.05,1.6,.15,TP,{nu:4,nv:16});pad(-bw/2-.045,-bw/2+.01,Y(.2),Y(.56),1.05,1.6,.3,TP,{nu:6,nv:10});pad(bw/2-.01,bw/2+.045,Y(.2),Y(.56),1.05,1.6,.3,TP,{nu:6,nv:10})});
+      [['nightL',-1],['nightR',1]].forEach(([nk,sg])=>item(nk,0,(box,q,glass,pad,cyl,blob,bar)=>{const x=sg*(bw/2+.32),zf=.4205;blob(x-.32,x+.32,0,.55);box(x-.24,x+.24,Y(.3),Y(.52),.02,.42,OK);
+        q([x-.21,Y(.32),zf],[x+.21,Y(.32),zf],[x+.21,Y(.322),zf],[x-.21,Y(.322),zf],[0,0,1],DK);q([x-.21,Y(.49),zf],[x+.21,Y(.49),zf],[x+.21,Y(.492),zf],[x-.21,Y(.492),zf],[0,0,1],DK);box(x-.03,x+.03,Y(.475),Y(.485),.42,.43,MB);
+        [[x-.21,.05],[x+.21,.05],[x-.21,.39],[x+.21,.39]].forEach(([lx,lz])=>bar([lx,Y(0),lz],[lx,Y(.3),lz],.014,MB));tlamp(cyl,x-.1,.2,.52,.2,.075);box(x+.02,x+.2,Y(.52),Y(.55),.12,.32,TP)}));
+      item('ward2',0,(box,q)=>{const x1=F('ward')?w-1.66:w-.02,x0=x1-.8,zf=.6205;box(x0,x1,Y(0),Y(2.0),.02,.62,GG);const ln=(xa,xb,ya,yb)=>q([xa,ya,zf],[xb,ya,zf],[xb,yb,zf],[xa,yb,zf],[0,0,1],DK);ln((x0+x1)/2-.002,(x0+x1)/2+.002,Y(.03),Y(1.98));[-1,1].forEach(sg=>{const x=(x0+x1)/2+sg*.035;box(x-.006,x+.006,Y(.1),Y(.96),.62,.645,MB)})});
+      item('ward',0,(box,q)=>{const x0=w-1.62,x1=w-.02,zf=.6205;box(x0,x1,Y(0),Y(2.0),.02,.62,GG);const ln=(xa,xb,ya,yb)=>q([xa,ya,zf],[xb,ya,zf],[xb,yb,zf],[xa,yb,zf],[0,0,1],DK);[1,2,3].forEach(i=>{const x=x0+(x1-x0)*i/4;ln(x-.002,x+.002,Y(.03),Y(1.98))});ln(x0+.01,x1-.01,Y(.998),Y(1.002));[[.25,-1],[.25,1],[.75,-1],[.75,1]].forEach(([f,sg])=>{const x=x0+(x1-x0)*f+sg*.035;box(x-.006,x+.006,Y(.1),Y(.96),.62,.645,MB)})});
+      item('dress',0,(box,q,glass,pad,cyl,blob,bar)=>{const x0=-w+.03,x1=-w+.79,zf=.5005;blob(x0-.1,x1+.1,0,.65);box(x0,x1,Y(.14),Y(.86),.02,.5,OK);
+        [.165,.395,.625,.845].forEach(y=>q([x0+.02,Y(y),zf],[x1-.02,Y(y),zf],[x1-.02,Y(y+.003),zf],[x0+.02,Y(y+.003),zf],[0,0,1],DK));
+        [.28,.51,.735].forEach(y=>[x0+.2,x1-.2].forEach(x=>box(x-.006,x+.006,Y(y-.05),Y(y+.05),.5,.52,MB)));
+        [[x0+.02,.05],[x1-.02,.05],[x0+.02,.47],[x1-.02,.47]].forEach(([x,z])=>bar([x,Y(0),z],[x,Y(.14),z],.016,MB));
+        pad(x1-.17,x1-.09,Y(.86),Y(1.0),.18,.26,.7,31,{nu:8,nv:12});[[0,1.12,0],[-.03,1.1,.01],[.03,1.11,-.01]].forEach(([dx,yy,dzz])=>pad(x1-.13+dx-.035,x1-.13+dx+.035,Y(yy-.09),Y(yy+.09),.22+dzz-.02,.22+dzz+.02,.9,TP,{nu:5,nv:8}))});
+      item('chair',0,(box,q,glass,pad,cyl,blob)=>couch(pad,cyl,blob,-w+.15,-w+1.15,1.0,1.9,1))}
     else if(T==='bad'){const vz=Math.min(D-1,2.4);
       item('tub',0,box=>{const x0=-w+.02,x1=x0+1.75,z0=.02,z1=.8,t=.07,ht=.58;box(x0,x1,Y(0),Y(ht),z0,z0+t,CER);box(x0,x1,Y(0),Y(ht),z1-t,z1,CER);box(x0,x0+t,Y(0),Y(ht),z0,z1,CER);box(x1-t,x1,Y(0),Y(ht),z0,z1,CER);box(x0+t,x1-t,Y(0),Y(.12),z0+t,z1-t,CER);box(x0+.35,x0+.39,Y(ht),Y(ht+.22),z0+.02,z0+.06,ST)});
       item('shower',0,(box,q,glass)=>{const x1=w-.02,x0=x1-1.0,z1=1.0,hh=2.0;box(x0,x1,Y(0),Y(.05),.02,z1,CER);
