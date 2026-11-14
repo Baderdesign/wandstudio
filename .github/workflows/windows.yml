@@ -1,0 +1,55 @@
+name: Windows-Programm bauen
+
+# Baut Bader-Wallstudio-Setup.exe und legt sie unter «Releases» zum Herunterladen ab.
+# Startet automatisch, wenn sich etwas im Ordner «desktop» ändert, oder von Hand über «Run workflow».
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'desktop/**'
+      - '.github/workflows/windows.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Programmsymbol bereitstellen
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force desktop/build | Out-Null
+          Copy-Item icon-512.png desktop/build/icon.png
+
+      - name: Abhängigkeiten installieren
+        working-directory: desktop
+        run: npm install --no-audit --no-fund
+
+      - name: Installationsdatei bauen
+        working-directory: desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npm run dist
+
+      - name: Als Datei am Lauf anhängen
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bader-Wallstudio-Setup
+          path: desktop/dist/Bader-Wallstudio-Setup.exe
+          if-no-files-found: error
+
+      - name: Unter Releases veröffentlichen
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: windows
+          name: Bader Wallstudio für Windows
+          body: Installationsdatei für Windows 10 und 11. Herunterladen, ausführen, fertig.
+          files: desktop/dist/Bader-Wallstudio-Setup.exe
+          make_latest: true
