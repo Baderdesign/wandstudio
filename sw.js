@@ -1,5 +1,5 @@
 /* Wandstudio – Offline-Speicher */
-const APP='ws-app-v4', ST = 'ws-stencils-v1', EXT = 'ws-ext-v1';
+const APP='ws-app-v5', ST = 'ws-stencils-v1', EXT = 'ws-ext-v1';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-180.png', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -14,14 +14,24 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET') return;
   if (url.hostname.endsWith('supabase.co')) return; // Anmeldung immer live
 
-  // App selbst: zuerst Netz (für Updates), sonst Speicher
-  // Immer frisch vom Server (ohne Browser-Zwischenspeicher); nur ohne Netz aus dem Speicher.
+  // App selbst: gespeicherte Version sofort zeigen, wenn das Netz nicht innert 2.5 s die ganze neue Version liefert.
+  // Die neue Version lädt im Hintergrund weiter und ist beim nächsten Start da. Ohne gespeicherte Version: Netz.
   const isApp = url.origin === location.origin && /\/(index\.html)?$/.test(url.pathname);
   if (req.mode === 'navigate' || isApp) {
-    e.respondWith(fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }).then(r => {
-      if (r.ok && isApp) { const cp = r.clone(); caches.open(APP).then(c => c.put('./index.html', cp)); }
-      return r;
-    }).catch(() => caches.match(isApp ? './index.html' : req, { ignoreSearch: true }).then(hit => hit || caches.match('./index.html'))));
+    const net = fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }).then(r => {
+      if (!r.ok) return r;
+      return r.blob().then(b => {
+        const full = new Response(b, { status: r.status, statusText: r.statusText, headers: r.headers });
+        if (isApp) { const cp = full.clone(); caches.open(APP).then(c => c.put('./index.html', cp)); }
+        return full;
+      });
+    });
+    e.waitUntil(net.then(() => {}, () => {}));
+    e.respondWith(caches.match(isApp ? './index.html' : req, { ignoreSearch: true }).then(hit => {
+      if (!hit) return net.catch(() => caches.match('./index.html'));
+      const slow = new Promise(res => setTimeout(() => res(hit), 2500));
+      return Promise.race([net.then(r => (r && r.ok) ? r : hit, () => hit), slow]);
+    }));
     return;
   }
   // Schablonen: zuerst Speicher
