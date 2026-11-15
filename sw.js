@@ -13,25 +13,23 @@ self.addEventListener('fetch', e => {
   const req = e.request, url = new URL(req.url);
   if (req.method !== 'GET') return;
   if (url.hostname.endsWith('supabase.co')) return; // Anmeldung immer live
+  if (url.searchParams.has('nocache')) return; // Versionsprüfung der App: immer direkt vom Server
 
-  // App selbst: gespeicherte Version sofort zeigen, wenn das Netz nicht innert 2.5 s die ganze neue Version liefert.
-  // Die neue Version lädt im Hintergrund weiter und ist beim nächsten Start da. Ohne gespeicherte Version: Netz.
+  // App selbst: gespeicherte Version sofort zeigen (schneller Start auch ohne Empfang).
+  // Die neue Version lädt im Hintergrund und gilt ab dem nächsten Start (oder sofort über «Neue Version» in der App). Ohne gespeicherte Version: Netz.
   const isApp = url.origin === location.origin && /\/(index\.html)?$/.test(url.pathname);
   if (req.mode === 'navigate' || isApp) {
-    const net = fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }).then(r => {
-      if (!r.ok) return r;
-      return r.blob().then(b => {
-        const full = new Response(b, { status: r.status, statusText: r.statusText, headers: r.headers });
-        if (isApp) { const cp = full.clone(); caches.open(APP).then(c => c.put('./index.html', cp)); }
-        return full;
-      });
-    });
-    e.waitUntil(net.then(() => {}, () => {}));
-    e.respondWith(caches.match(isApp ? './index.html' : req, { ignoreSearch: true }).then(hit => {
-      if (!hit) return net.catch(() => caches.match('./index.html'));
-      const slow = new Promise(res => setTimeout(() => res(hit), 2500));
-      return Promise.race([net.then(r => (r && r.ok) ? r : hit, () => hit), slow]);
-    }));
+    const net = fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' });
+    const hitP = caches.match(isApp ? './index.html' : req, { ignoreSearch: true });
+    e.respondWith(hitP.then(hit => hit || net.then(r => { if (r.ok && isApp) { const cp = r.clone(); caches.open(APP).then(c => c.put('./index.html', cp)); } return r; }).catch(() => caches.match('./index.html'))));
+    e.waitUntil(hitP.then(async hit => {
+      if (!hit || !isApp) return;
+      const r = await net; if (!r.ok) return;
+      const t = await r.text(), old = await hit.clone().text();
+      if (old === t) return;
+      const c = await caches.open(APP);
+      await c.put('./index.html', new Response(t, { headers: { 'Content-Type': 'text/html; charset=utf-8' } }));
+    }).catch(() => {}));
     return;
   }
   // Schablonen: zuerst Speicher
