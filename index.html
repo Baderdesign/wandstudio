@@ -937,7 +937,7 @@ body.mode-simple #v3dFine,body.mode-simple #v3dFineBox{display:none!important}
 <div class="sheetwrap" id="wallSheet" hidden>
   <div class="sheet" role="dialog" aria-label="Wand hinzufügen">
     <div class="sheethead"><h2>Neue Wand</h2><button class="chipb" id="wallSheetClose" type="button">Schliessen</button></div>
-    <div id="nwSide" class="newopt"><div class="lbl">Seite</div><div class="seg" id="nwSideBtns"><button class="chipb" id="nwLeft" type="button" aria-pressed="true">Linke Wand</button><button class="chipb" id="nwRight" type="button" aria-pressed="false">Rechte Wand</button></div><p class="hint" id="nwSideHint"></p></div>
+    <div id="nwSide" class="newopt"><div class="lbl">Seite</div><div class="seg" id="nwSideBtns"><button class="chipb" id="nwLeft" type="button" aria-pressed="true">Linke Wand</button><button class="chipb" id="nwRight" type="button" aria-pressed="false">Rechte Wand</button><button class="chipb" id="nwBack" type="button" aria-pressed="false">Rückwand</button></div><p class="hint" id="nwSideHint"></p></div>
     <div class="lbl newopt">Leer beginnen</div>
     <div class="seg newopt"><button class="chipb" id="nwStd" type="button">Standardwand</button><button class="chipb" id="nwFoto" type="button">Foto…</button></div>
     <div class="lbl newopt">Muster dieser Wand übernehmen</div>
@@ -2218,6 +2218,10 @@ const FURN={wohnen:[['sofa','Sofa'],['table','Couchtisch'],['chair','Sessel'],['
   bad:[['shower','Duschkabine'],['tub','Badewanne'],['vanity','Waschtisch'],['mirror','Spiegel'],['wc','WC'],['rad','Handtuchheizkörper']],
   wc:[['wc','WC'],['basin','Lavabo'],['mirror','Spiegel']]};
 let ROOM={type:'wohnen',furn:{},floor:{t:'holz',c:'#cfc3ae'}};
+/* Möbel gehören zur jeweiligen Wand (Raumtyp und Boden gelten fürs ganze Projekt) */
+const RF_KEYS=['furn','pos','cnt','wid'];
+function rfGet(){const o={};RF_KEYS.forEach(k=>{if(ROOM[k])o[k]=JSON.parse(JSON.stringify(ROOM[k]))});if(!o.furn)o.furn={};return o}
+function rfSet(rf){RF_KEYS.forEach(k=>delete ROOM[k]);Object.assign(ROOM,JSON.parse(JSON.stringify(rf||{})));if(!ROOM.furn)ROOM.furn={}}
 /* Eigene Böden aus dem Adminbereich: Foto wird zu einer nahtlosen Kachel gemischt */
 const CFL=(()=>{let L=[];try{L=JSON.parse(localStorage.getItem('ws-custom-floor')||'[]')}catch(e){}return Array.isArray(L)?L.filter(t=>t&&t.id&&t.img&&t.on!==false).sort((a,b)=>(a.ord||0)-(b.ord||0)):[]})();
 const CFT={};
@@ -2251,7 +2255,7 @@ function wardImg(W){const im=FPHOTO.ward;if(!im)return null;const n=wardMods(W),
   c.naturalWidth=cw;c.naturalHeight=nh;c._k=key;FPHOTO.wardW=c;delete FPC.wardW;return c}
 function fCnt(k){const C=(ROOM.cnt||{})[ROOM.type]||{};return Math.max(1,Math.min(FMAX,C[k]||1))}
 function fSetCnt(k,n){if(!ROOM.cnt)ROOM.cnt={};const C=ROOM.cnt[ROOM.type]||(ROOM.cnt[ROOM.type]={});const old=fCnt(k);n=Math.max(1,Math.min(FMAX,n));C[k]=n;const P=(ROOM.pos||{})[ROOM.type];if(P)for(let i=n+1;i<=old;i++)delete P[k+'#'+i]}
-function fBase(k){return String(k).split('#')[0]}
+function fBase(k){return String(k).replace(/^[LRB]:/,'').split('#')[0]}
 function fOff(k){const P=(ROOM.pos||{})[ROOM.type]||{};if(P[k])return P[k];const m=/^(.+)#(\d+)$/.exec(k);if(!m)return[0,0];const i=+m[2],w=(WID[m[1]]?fWid(m[1]):(FW[m[1]]||1))+.1;return[(i%2?1:-1)*Math.floor(i/2)*w,0]}
 function fMove(k,dx,dz){if(!ROOM.pos)ROOM.pos={};const P=ROOM.pos[ROOM.type]||(ROOM.pos[ROOM.type]={});const o=P[k]||fOff(k);P[k]=[Math.max(-8,Math.min(8,o[0]+dx)),Math.max(-1.2,Math.min(12,o[1]+dz)),o[2]||0]}
 function fSet(k,x,z){if(!ROOM.pos)ROOM.pos={};const P=ROOM.pos[ROOM.type]||(ROOM.pos[ROOM.type]={});const o=P[k]||fOff(k);P[k]=[Math.max(-8,Math.min(8,x)),Math.max(-1.2,Math.min(12,z)),o[2]||0]}
@@ -2278,8 +2282,8 @@ function syncRoomUi(){const nm=(ROOMS.find(r=>r[0]===ROOM.type)||ROOMS[0])[1];co
   if(F[2].length)swatches(fc,F[2].map(([n,c])=>[I18N.tr(n),c]),ROOM.floor.c||F[2][0][1],(c,code)=>{ROOM.floor.c=c;ROOM.floor.ncs=code||null;syncRoomUi();touchProject();schedule()},$('#floorColName'),ROOM.floor.ncs||null);else fc.innerHTML=''}
 function captureWall(){if(state.editPart>=0)exitPart(true);return{role:state.role,parts:JSON.parse(JSON.stringify(state.parts||[])),src:state.src,img:state.img,poly:state.poly.map(p=>p.slice()),outline:state.outline?state.outline.map(p=>p.slice()):null,holes:(state.holes||[]).map(h=>h.map(p=>p.slice())),
   wallM:state.wallM,wallH:state.wallH,wallW:state.wallW,shade:state.shade,base:{...state.base},layers:JSON.parse(JSON.stringify(state.layers)),sel:state.sel,scene:{...(state.scene||{})},
-  wallReady:!!state.wallReady,keepDesign:!!state.keepDesign,gi:cloneGi(state.gi),PW,PH,W,H,thumb:wallThumb()}}
-function loadWall(w){partHold=null;state.editPart=-1;try{$('#partBanner').hidden=true}catch(e){}state.role=w.role;state.parts=JSON.parse(JSON.stringify(w.parts||[]));state.src=w.src;state.wallW=w.wallW;state.wallH=w.wallH;if(w.src==='std')stdGeom();stdWidthCss();state.img=w.img;state.poly=w.poly.map(p=>p.slice());state.outline=w.outline?w.outline.map(p=>p.slice()):null;state.holes=(w.holes||[]).map(h=>h.map(p=>p.slice()));
+  wallReady:!!state.wallReady,keepDesign:!!state.keepDesign,gi:cloneGi(state.gi),PW,PH,W,H,thumb:wallThumb(),rf:rfGet()}}
+function loadWall(w){if(w.rf)rfSet(w.rf);else if(!(w.role==='main'||walls.length<=1))rfSet({});try{syncRoomUi()}catch(e){}partHold=null;state.editPart=-1;try{$('#partBanner').hidden=true}catch(e){}state.role=w.role;state.parts=JSON.parse(JSON.stringify(w.parts||[]));state.src=w.src;state.wallW=w.wallW;state.wallH=w.wallH;if(w.src==='std')stdGeom();stdWidthCss();state.img=w.img;state.poly=w.poly.map(p=>p.slice());state.outline=w.outline?w.outline.map(p=>p.slice()):null;state.holes=(w.holes||[]).map(h=>h.map(p=>p.slice()));
   state.wallM=w.wallM;state.wallH=w.wallH;state.wallW=w.wallW;state.shade=w.shade;Object.assign(state.base,w.base);state.layers=JSON.parse(JSON.stringify(w.layers));state.layers.forEach(l=>{if(!PATTERNS[l.pattern])l.pattern=firstPat()});
   state.sel=w.sel&&state.layers.some(l=>l.id===w.sel)?w.sel:(state.layers.length?state.layers[state.layers.length-1].id:null);state.scene={...(w.scene||{})};state.gi=cloneGi(w.gi);if(state.tool[0]==='g')state.tool='move';state.wallReady=w.wallReady;state.keepDesign=w.keepDesign;
   PW=w.PW;PH=w.PH;W=w.W;H=w.H;state.editOut=false;state.ptSel=null;state.editWall=state.src==='foto'&&!state.wallReady;state.corners=[];
@@ -2289,14 +2293,14 @@ function blankStd(){const hm=2.45,wm=4.45,sh=Math.round(1200*hm/wm),k=sh/(hm*100
 function getDesign(){return{base:{...state.base},layers:JSON.parse(JSON.stringify(state.layers)),gi:cloneGi(state.gi),H:H}}
 function applyDesign(d){Object.assign(state.base,d.base);const ky=H/d.H;state.layers=d.layers.map(l=>{const n={...l,id:nextId++};n.y*=ky;n.oy*=ky;return n});state.sel=state.layers.length?state.layers[state.layers.length-1].id:null;if(d.gi)state.gi=cloneGi(d.gi);
   state.keepDesign=true;syncBase();syncLayers();schedule()}
-const ROLE_N={main:'Hauptwand',left:'Linke Wand',right:'Rechte Wand'};
-function roleOf(i){const r=i===curWall?state.role:(walls[i]&&walls[i].role);return r!==undefined?r:(['main','left','right'][i]||null)}
+const ROLE_N={main:'Hauptwand',left:'Linke Wand',right:'Rechte Wand',back:'Rückwand'};
+function roleOf(i){const r=i===curWall?state.role:(walls[i]&&walls[i].role);return r!==undefined?r:(['main','left','right','back'][i]||null)}
 function roleIdx(r){for(let i=0;i<walls.length;i++)if(roleOf(i)===r)return i;return -1}
 let nwRole='left';
-function freeSides(){return['left','right'].filter(r=>roleIdx(r)<0)}
-function syncSideChoice(){const f=freeSides();{const h=document.querySelector('#wallSheet .sheethead h2');if(h)h.textContent=I18N.tr(f.length?'Neue Wand':'Wände')}document.querySelectorAll('#wallSheet .newopt').forEach(e=>e.hidden=!f.length);if(f.length===2&&!f.includes(nwRole))nwRole='left';if(f.length===1)nwRole=f[0];if(!f.length)nwRole=null;
-  $('#nwSideBtns').hidden=f.length!==2;press($('#nwLeft'),nwRole==='left');press($('#nwRight'),nwRole==='right');
-  $('#nwSideHint').textContent=f.length===2?'':f.length===1?I18N.tr(f[0]==='left'?'Die neue Wand wird automatisch die linke Wand.':'Die neue Wand wird automatisch die rechte Wand.'):''}
+function freeSides(){return['left','right','back'].filter(r=>roleIdx(r)<0)}
+function syncSideChoice(){const f=freeSides();{const h=document.querySelector('#wallSheet .sheethead h2');if(h)h.textContent=I18N.tr(f.length?'Neue Wand':'Wände')}document.querySelectorAll('#wallSheet .newopt').forEach(e=>e.hidden=!f.length);if(f.length>=2&&!f.includes(nwRole))nwRole=f[0];if(f.length===1)nwRole=f[0];if(!f.length)nwRole=null;
+  $('#nwSideBtns').hidden=f.length<2;[['left','#nwLeft'],['right','#nwRight'],['back','#nwBack']].forEach(([r,id])=>{const b=$(id);b.hidden=!f.includes(r);press(b,nwRole===r)});
+  $('#nwSideHint').textContent=f.length===1?I18N.tr(f[0]==='left'?'Die neue Wand wird automatisch die linke Wand.':f[0]==='right'?'Die neue Wand wird automatisch die rechte Wand.':'Die neue Wand wird automatisch die Rückwand.'):f.includes('back')&&f.length>=2?I18N.tr('Rückwand = die Wand gegenüber der Hauptwand.'):''}
 function startNewWall(){walls[curWall]=captureWall();walls.push(null);curWall=walls.length-1}
 function addWall(kind,copy){const d=copy?getDesign():null,role=nwRole;$('#wallSheet').hidden=true;
   if(kind==='std'){startNewWall();loadWall(blankStd());state.role=role;if(d)applyDesign(d);walls[curWall]=null;renderWallBar();touchProject();showTab(d?'schab':'wand')}
@@ -2310,7 +2314,7 @@ function refreshThumb(){clearTimeout(thumbT);thumbT=setTimeout(()=>{state._thumb
 $('#partBack').onclick=()=>{exitPart();touchProject()};$('#addVor').onclick=()=>addPart('vor');$('#addNi').onclick=()=>addPart('ni');
 $('#nwStd').onclick=()=>addWall('std',false);$('#nwStdCopy').onclick=()=>addWall('std',true);
 $('#nwFoto').onclick=()=>addWall('foto',false);$('#nwFotoCopy').onclick=()=>addWall('foto',true);
-$('#wallSheetClose').onclick=()=>{$('#wallSheet').hidden=true};$('#nwLeft').onclick=()=>{nwRole='left';syncSideChoice()};$('#nwRight').onclick=()=>{nwRole='right';syncSideChoice()};
+$('#wallSheetClose').onclick=()=>{$('#wallSheet').hidden=true};$('#nwLeft').onclick=()=>{nwRole='left';syncSideChoice()};$('#nwRight').onclick=()=>{nwRole='right';syncSideChoice()};$('#nwBack').onclick=()=>{nwRole='back';syncSideChoice()};
 $('#delWall').onclick=()=>{const b=$('#delWall');if(b.dataset.sure!=='1'){b.dataset.sure='1';b.textContent='Wirklich löschen? Nochmal tippen';setTimeout(()=>{b.dataset.sure='';b.textContent='Aktuelle Wand löschen'},3000);return}
   b.dataset.sure='';b.textContent='Aktuelle Wand löschen';if(walls.length<2)return;walls.splice(curWall,1);curWall=Math.max(0,curWall-1);$('#wallSheet').hidden=true;loadWall(walls[curWall]);touchProject()};
 
@@ -2332,7 +2336,7 @@ async function openProject(id){try{const p=await idbDo('readonly',st=>st.get(id)
     for(const c of p.customs||[]){const ex=PATTERNS[c.key];if(ex&&ex.label===c.label)continue;const im=await loadImg(c.src);const k=addCustom(im,c.label);const np=PATTERNS[k];np.th=c.th;np.light=c.light;buildMask(np);map[c.key]=k}
     walls=[];for(const w of p.walls){const o={...w};if(w.img){const im=await loadImg(w.img);const c=mk(w.PW,w.PH);c.getContext('2d').drawImage(im,0,0,w.PW,w.PH);o.img=c}o.layers=(w.layers||[]).map(l=>({...l,pattern:map[l.pattern]||l.pattern}));
       o.layers.forEach(l=>{if(l.id>=nextId)nextId=l.id+1});walls.push(o)}
-    if(p.room&&p.room.floor){ROOM=JSON.parse(JSON.stringify(p.room));if(!FLOORS.some(f=>f[0]===ROOM.floor.t))ROOM.floor={t:'holz',c:'#cfc3ae'}}else ROOM={type:'wohnen',furn:{},floor:{t:'holz',c:'#cfc3ae'}};if(!ROOM.furn)ROOM.furn={};try{syncRoomUi()}catch(e){}curProject=p.id;curWall=Math.min(p.cur||0,walls.length-1);$('#projName').value=p.name;state._thumb='';loadWall(walls[curWall]);$('#projSheet').hidden=true;toast('Projekt „'+p.name+'“ geöffnet.',1800)}
+    if(p.room&&p.room.floor){ROOM=JSON.parse(JSON.stringify(p.room));if(!FLOORS.some(f=>f[0]===ROOM.floor.t))ROOM.floor={t:'holz',c:'#cfc3ae'}}else ROOM={type:'wohnen',furn:{},floor:{t:'holz',c:'#cfc3ae'}};if(!ROOM.furn)ROOM.furn={};{const hasMain=walls.some(x=>x&&x.role==='main');walls.forEach((x,i)=>{if(x&&!x.rf)x.rf=(x.role==='main'||(!hasMain&&i===0)||walls.length===1)?rfGet():{furn:{}}})}try{syncRoomUi()}catch(e){}curProject=p.id;curWall=Math.min(p.cur||0,walls.length-1);$('#projName').value=p.name;state._thumb='';loadWall(walls[curWall]);$('#projSheet').hidden=true;toast('Projekt „'+p.name+'“ geöffnet.',1800)}
   catch(e){openProject._err=(e instanceof Event)?'Bild konnte nicht geladen werden':String(e&&e.message||e);toast('Projekt konnte nicht geöffnet werden.',4000)}}
 async function listInsp(){const h=$('#inspList'),lb=$('#inspLbl');if(!h)return;let L=[];try{L=await ACC.inspiration()}catch(e){}h.innerHTML='';lb.hidden=!L.length;
   L.forEach(it=>{const d=it.data||{},r=document.createElement('div');r.className='prow';const im=document.createElement('img');im.alt='';if(typeof it.thumb==='string'&&it.thumb.startsWith('data:image/'))im.src=it.thumb;
@@ -2351,7 +2355,7 @@ $('#projBtn').onclick=()=>{$('#projSheet').hidden=false;listProjects()};$('#proj
 $('#projSave').onclick=()=>saveProject();
 $('#projNew').onclick=()=>{curProject=null;$('#projName').value='';walls=[null];curWall=0;state._thumb='';loadWall(blankStd());$('#projSheet').hidden=true;toast('Neues Projekt begonnen.',1500)};
 $('#closeOv').onclick=()=>{$('#overlay').hidden=true};
-const APP_VER=139,APP_LABEL='1.0.3';
+const APP_VER=142,APP_LABEL='1.0.3';
 
 /* ---------- KI: Wand antippen – läuft auf eigener Seite (ki.html), damit genug Speicher frei ist ---------- */
 const AI=(function(){
@@ -2765,26 +2769,27 @@ void main(){vec2 q=(gl_FragCoord.xy-uScr*.5)*uS;q.y=-q.y;vec3 r=uRot*vec3(q,1.);
   const FSS=`precision highp float;varying vec3 vP;varying vec3 vN;varying vec2 vUV;uniform sampler2D tS,tHt;uniform vec3 uLight,uCam,uTu;uniform vec2 uTx;uniform float uA,uG,uHas;
 float hh(vec2 u){return texture2D(tHt,u).r;}
 void main(){vec3 n0=normalize(vN);vec3 n=n0;if(uHas>.5){float dx=hh(vUV+vec2(uTx.x,0.))-hh(vUV-vec2(uTx.x,0.)),dy=hh(vUV+vec2(0.,uTx.y))-hh(vUV-vec2(0.,uTx.y));n=normalize(n0-uTu*dx*uA-vec3(0.,1.,0.)*dy*uA);}
-  vec3 L=normalize(uLight-vP),V=normalize(uCam-vP),H=normalize(L+V);float dif=max(dot(n,L),0.);vec3 c=pow(texture2D(tS,vUV).rgb,vec3(2.2));
+  vec3 L=normalize(uLight-vP),V=normalize(uCam-vP),H=normalize(L+V);float dif=max(dot(n,L),0.);if(dot(n0,L)<.15)dif=max(dif,.55+.3*abs(dot(n,L))-.3*abs(dot(n0,L)));vec3 c=pow(texture2D(tS,vUV).rgb,vec3(2.2));
   float sp=pow(max(dot(n,H),0.),mix(18.,140.,uG))*uG*.35;gl_FragColor=vec4(pow(clamp(c*(dif*.8+.26)+sp,0.,1.),vec3(1./2.2)),1.);}`;
   /* Nachbarwände des Projekts als flache Bilder für die Seitenwände im Raum */
-  function sideWalls(){const idx=[['L',roleIdx('left')],['R',roleIdx('right')]].filter(([,i])=>i>=0&&i!==curWall&&walls[i]&&walls[i].layers);if(!idx.length)return[];
+  function sideWalls(){const idx=[['L',roleIdx('left')],['R',roleIdx('right')],['B',roleIdx('back')]].filter(([,i])=>i>=0&&i!==curWall&&walls[i]&&walls[i].layers);if(!idx.length)return[];
     const keep=captureWall(),kh=hist.slice(),kf=future.slice(),ks=lastSnapStr,ksel=state.sel,out=[];
-    try{idx.forEach(([side,i])=>{loadWall(walls[i]);const c0=wl.getContext('2d');composeWall(c0,{});if(state.src==='std')renderOwnParts(c0,W,H,{});const k=Math.min(1,1400/W),c=mk(Math.max(2,Math.round(W*k)),Math.max(2,Math.round(H*k))),x=c.getContext('2d');x.fillStyle='#f0eee8';x.fillRect(0,0,c.width,c.height);x.drawImage(wl,0,0,c.width,c.height);const o={c,i,side,wm:state.wallM,hm:H/pxPerCm()/100};
+    try{idx.forEach(([side,i])=>{loadWall(walls[i]);const c0=wl.getContext('2d');composeWall(c0,{});if(state.src==='std'){renderOwnParts(c0,W,H,{});try{drawStdFg(c0,null,true)}catch(e){console.error(e)}}const k=Math.min(1,1400/W),c=mk(Math.max(2,Math.round(W*k)),Math.max(2,Math.round(H*k))),x=c.getContext('2d');x.fillStyle='#f0eee8';x.fillRect(0,0,c.width,c.height);x.drawImage(wl,0,0,c.width,c.height);const o={c,i,side,wm:state.wallM,hm:H/pxPerCm()/100,rf:state.src==='std'?rfGet():null};
       try{const S=surf(state.base.on?state.base.effect:'glatt',o.wm,o.hm),N=S.MW*S.MH,hb=new Uint8Array(N*4);let rs=0;for(let j=0;j<N;j++){const hv=Math.max(0,Math.min(255,S.hgt[j]*255));hb[j*4]=hb[j*4+1]=hb[j*4+2]=hv;hb[j*4+3]=255;rs+=S.rough[j]}
         o.hb=hb;o.MW=S.MW;o.MH=S.MH;o.amp=S.P.macroAmp||0;o.gl=Math.max(0,Math.min(1,1-rs/N))}catch(e){console.warn(e)}out.push(o)})}
     finally{loadWall(keep);if(ksel!=null&&state.layers.some(l=>l.id===ksel)){state.sel=ksel;syncLayers()}hist.length=0;hist.push(...kh);future.length=0;future.push(...kf);lastSnapStr=ks;syncUndo()}
     return out}
   function buildSides(wm,hm){if(!progS||!sides.length)return;const w=wm/2,h=hm/2,dz=roomDz(wm),e=.006,V=[];
     sides.forEach((s,k)=>{const ws=Math.min(s.wm,dz-.02),hs=Math.min(s.hm,hm),vt=hs/s.hm,L=s.side==='L',x=L?-w+e:w-e,n=L?[1,0,0]:[-1,0,0],u=z=>L?1-z/s.wm:z/s.wm;
-      const A=[x,-h,0,...n,u(0),0,14],B=[x,-h,ws,...n,u(ws),0,14],C=[x,-h+hs,ws,...n,u(ws),vt,14],D=[x,-h+hs,0,...n,u(0),vt,14];[A,B,C,A,C,D].forEach(P=>V.push(...P));
+      if(s.side==='B'){const z=dz-e,u0=Math.max(0,s.wm/2-w),u1=Math.min(s.wm,s.wm/2+w),X=m=>s.wm/2-m,nb=[0,0,-1];const A=[X(u0),-h,z,...nb,u0/s.wm,0,14],B=[X(u1),-h,z,...nb,u1/s.wm,0,14],C=[X(u1),-h+hs,z,...nb,u1/s.wm,vt,14],D=[X(u0),-h+hs,z,...nb,u0/s.wm,vt,14];[A,B,C,A,C,D].forEach(P=>V.push(...P))}else{
+      const A=[x,-h,0,...n,u(0),0,14],B=[x,-h,ws,...n,u(ws),0,14],C=[x,-h+hs,ws,...n,u(ws),vt,14],D=[x,-h+hs,0,...n,u(0),vt,14];[A,B,C,A,C,D].forEach(P=>V.push(...P))}
       tex('side'+k,0,0,0,s.c,false,false);if(s.hb)tex('sideH'+k,1,s.MW,s.MH,s.hb,false,false)});g.activeTexture(g.TEXTURE1);g.bindTexture(g.TEXTURE_2D,texs.mat);
     g.activeTexture(g.TEXTURE0);g.bindTexture(g.TEXTURE_2D,texs.mac);g.bindBuffer(g.ARRAY_BUFFER,bufS);g.bufferData(g.ARRAY_BUFFER,new Float32Array(V),g.STATIC_DRAW)}
   function drawSides(mvp){if(!progS||!sides.length||!info)return;g.useProgram(progS);g.bindBuffer(g.ARRAY_BUFFER,bufS);[['aP',3,0],['aN',3,12],['aUV',2,24]].forEach(([n,sz,o])=>{const l=g.getAttribLocation(progS,n);if(l<0)return;g.enableVertexAttribArray(l);g.vertexAttribPointer(l,sz,g.FLOAT,false,36,o)});
     const M=info,ls=Math.max(M.wm,M.hm)/2.4,a=v.lAng*Math.PI/180,zl=v.low?.55:3.2;setU(progS,'uLight','uniform3fv',[Math.sin(a)*(v.low?2.2:1.6)*ls,v.low?M.hm*.42:M.hm*.85,Math.max(.15,Math.cos(a)*zl)*ls]);
     setU(progS,'uMVP','uniformMatrix4fv',false,mvp);setU(progS,'tS','uniform1i',0);setU(progS,'tHt','uniform1i',1);setU(progS,'uCam','uniform3fv',v3cam);
     sides.forEach((s,k)=>{g.activeTexture(g.TEXTURE0);g.bindTexture(g.TEXTURE_2D,texs['side'+k]);const has=!!(s.hb&&texs['sideH'+k]);g.activeTexture(g.TEXTURE1);g.bindTexture(g.TEXTURE_2D,has?texs['sideH'+k]:texs.mat);
-      setU(progS,'uHas','uniform1f',has?1:0);setU(progS,'uTx','uniform2f',1/(s.MW||512),1/(s.MH||512));setU(progS,'uA','uniform1f',Math.min(3.5,((s.amp||0)*22+.5)*v.amp*v.shk));setU(progS,'uG','uniform1f',(s.gl||0)*v.gl*.6);setU(progS,'uTu','uniform3fv',s.side==='L'?[0,0,-1]:[0,0,1]);g.drawArrays(g.TRIANGLES,k*6,6)});
+      setU(progS,'uHas','uniform1f',has?1:0);setU(progS,'uTx','uniform2f',1/(s.MW||512),1/(s.MH||512));setU(progS,'uA','uniform1f',Math.min(3.5,((s.amp||0)*22+.5)*v.amp*v.shk));setU(progS,'uG','uniform1f',(s.gl||0)*v.gl*.6);setU(progS,'uTu','uniform3fv',s.side==='L'?[0,0,-1]:s.side==='B'?[-1,0,0]:[0,0,1]);if(!(s.side==='B'&&v.furn&&v.top))g.drawArrays(g.TRIANGLES,k*6,6)});
     g.activeTexture(g.TEXTURE0);g.bindTexture(g.TEXTURE_2D,texs.mac);g.activeTexture(g.TEXTURE1);g.bindTexture(g.TEXTURE_2D,texs.mat)}
   function sh(t,s){const o=g.createShader(t);g.shaderSource(o,s);g.compileShader(o);if(!g.getShaderParameter(o,g.COMPILE_STATUS))throw new Error(g.getShaderInfoLog(o));return o}
   function prog(vs,fs){const p=g.createProgram();g.attachShader(p,sh(g.VERTEX_SHADER,vs));g.attachShader(p,sh(g.FRAGMENT_SHADER,fs));g.linkProgram(p);if(!g.getProgramParameter(p,g.LINK_STATUS))throw new Error(g.getProgramInfoLog(p));return p}
@@ -2795,7 +2800,7 @@ void main(){vec3 n0=normalize(vN);vec3 n=n0;if(uHas>.5){float dx=hh(vUV+vec2(uTx
     if(mip){g.generateMipmap(g.TEXTURE_2D);g.texParameteri(g.TEXTURE_2D,g.TEXTURE_MIN_FILTER,g.LINEAR_MIPMAP_LINEAR)}else g.texParameteri(g.TEXTURE_2D,g.TEXTURE_MIN_FILTER,g.LINEAR);g.texParameteri(g.TEXTURE_2D,g.TEXTURE_MAG_FILTER,g.LINEAR)}
   function init(){if(g)return true;cvs=$('#v3dCv');g=cvs.getContext('webgl',{antialias:true,alpha:false,preserveDrawingBuffer:true})||cvs.getContext('experimental-webgl');if(!g)return false;
     progW=prog(VSW,FSW);progP=prog(VSP,FSP);progC=prog(VSW,FSC);try{progS=prog(VSW,FSS);bufS=g.createBuffer()}catch(e){console.warn(e);progS=null}bufW=g.createBuffer();bufC=g.createBuffer();bufQ=g.createBuffer();g.bindBuffer(g.ARRAY_BUFFER,bufQ);g.bufferData(g.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),g.STATIC_DRAW);g.enable(g.DEPTH_TEST);return true}
-  function roomDz(wm){if(v.room&&sides&&sides.length){return Math.max(2.4,...sides.map(s=>s.wm))}if(v.room&&ROOM.depth)return Math.max(2.5,Math.min(10,+ROOM.depth));return Math.max(6,wm/2/Math.tan(.6)*1.05*1.9+1)}
+  function roomDz(wm){const LR=v.room&&sides?sides.filter(s=>s.side!=='B'):[];if(LR.length){return Math.max(2.4,...LR.map(s=>s.wm))}if(v.room&&ROOM.depth)return Math.max(2.5,Math.min(10,+ROOM.depth));return Math.max(6,wm/2/Math.tan(.6)*1.05*1.9+1)}
   function roomShell(q,w,h,dz,floor){q([-w,-h,dz],[-w,-h,0],[-w,h,0],[-w,h,dz],[1,0,0],13);q([w,-h,0],[w,-h,dz],[w,h,dz],[w,h,0],[-1,0,0],13);
     if(!(v.furn&&v.top))q([-w,h,0],[w,h,0],[w,h,dz],[-w,h,dz],[0,-1,0],13); /* Übersicht von oben: ohne Decke */
     if(floor)q([-w,-h,dz],[w,-h,dz],[w,-h,0],[-w,-h,0],[0,1,0],-1)}
@@ -2952,8 +2957,21 @@ void main(){vec3 n0=normalize(vN);vec3 n=n0;if(uHas>.5){float dx=hh(vUV+vec2(uTx
       [[P.drX+6,.07],[P.drX+DRW-9,.07],[P.drX+6,zf-.07],[P.drX+DRW-9,zf-.07]].forEach(([lx,lz])=>box(X(lx),X(lx+3),Y(0),Y(lg),lz-.015,lz+.015,5));
       const dw=(DRW-2)/3;for(let i=1;i<3;i++){const gx=P.drX+1+dw*i;q([X(gx-.3),Y(lg+1.5),zf+.0008],[X(gx+.3),Y(lg+1.5),zf+.0008],[X(gx+.3),Y(DRH-tp-1.5),zf+.0008],[X(gx-.3),Y(DRH-tp-1.5),zf+.0008],[0,0,1],2)}
       for(let i=0;i<3;i++){const cx=P.drX+1+dw*(i+.5);box(X(cx-6),X(cx+6),Y(DRH-tp-7),Y(DRH-tp-6),zf,zf+.018,5)}}
-    {const GQ=[];try{furnish(q,box,w,h,roomDz(wm),GQ,true,!v.room)}catch(e){console.error(e)}GQ.forEach(([a,b,c,d,n,f])=>q(a,b,c,d,n,f||18));nG=GQ.length*6}
+    {const GQ=[];try{furnish(q,box,w,h,roomDz(wm),GQ,true,!v.room)}catch(e){console.error(e)}if(v.room)try{sideFurn(q,GQ,w,h)}catch(e){console.error(e)}GQ.forEach(([a,b,c,d,n,f])=>q(a,b,c,d,n,f||18));nG=GQ.length*6}
     g.bindBuffer(g.ARRAY_BUFFER,bufW);g.bufferData(g.ARRAY_BUFFER,new Float32Array(V),g.STATIC_DRAW);nW=V.length/9}
+  /* Änderung an einem Möbel einer Seiten- oder Rückwand: in deren eigene Möbelliste schreiben */
+  function sideEdit(key,fn){const m=/^([LRB]):(.+)$/.exec(String(key));if(!m)return false;const s=sides.find(x=>x.side===m[1]);if(!s||!s.rf)return false;const kRF=rfGet();
+    try{rfSet(s.rf);fn(m[2]);s.rf=rfGet();if(walls[s.i])walls[s.i].rf=s.rf}finally{rfSet(kRF)}return true}
+  /* Möbel der linken und rechten Wand: gleich gebaut wie an der Hauptwand, dann an die Seitenwand gedreht */
+  function sideFurn(q,GQ,w,h){if(!sides.length)return;const kFI=FI,kSel=fSel,kRF=rfGet();
+    try{sides.forEach(s=>{if(!s.rf||!Object.values(s.rf.furn||{}).some(l=>l&&l.length))return;rfSet(s.rf);const PF=s.side+':';fSel=kSel&&String(kSel).startsWith(PF)?String(kSel).slice(PF.length):null;FI={};const L=s.side==='L',BK=s.side==='B',cz=s.wm/2,DZ=roomDz(w*2);
+      const tp=p=>BK?[-p[0],p[1],DZ-p[2]]:L?[-w+p[2],p[1],cz-p[0]]:[w-p[2],p[1],cz+p[0]],t1=n=>BK?[-n[0],n[1],-n[2]]:L?[n[2],n[1],-n[0]]:[-n[2],n[1],n[0]],tn=n=>Array.isArray(n[0])?n.map(t1):t1(n);
+      const qs=(a,b,c,d,n,f)=>q(tp(a),tp(b),tp(c),tp(d),tn(n),f);
+      const bs=(x0,x1,y0,y1,z0,z1,mf,mo)=>{mo=mo??mf;qs([x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1],[0,0,1],mf);qs([x1,y0,z1],[x1,y0,z0],[x1,y1,z0],[x1,y1,z1],[1,0,0],mo);qs([x0,y0,z0],[x0,y0,z1],[x0,y1,z1],[x0,y1,z0],[-1,0,0],mo);
+        qs([x0,y1,z1],[x1,y1,z1],[x1,y1,z0],[x0,y1,z0],[0,1,0],mo);qs([x0,y0,z0],[x1,y0,z0],[x1,y0,z1],[x0,y0,z1],[0,-1,0],mo)};
+      const G=[];furnish(qs,bs,cz,h,BK?DZ:2*w,G,true,false);G.forEach(([a,b,c,d,n,f])=>GQ.push([tp(a),tp(b),tp(c),tp(d),tn(n),f]));
+      const th=BK?Math.PI:L?Math.PI/2:-Math.PI/2;Object.entries(FI).forEach(([k,I])=>{const P=tp([I.cx,0,I.cz]);kFI[PF+k]={...I,cx:P[0],cz:P[2],ro:(I.ro||0)+th,lbx:I.bx,lbz:I.bz,side:s.side,sw:s.wm/2,sd:BK?DZ:2*w,toL:(X,Z)=>BK?[-X,DZ-Z]:L?[cz-Z,X+w]:[Z-cz,w-X]}})})}
+    finally{rfSet(kRF);FI=kFI;fSel=kSel}}
   function geomCard(){nG=0;const ch=2,cw=ch*PW/PH,w=cw/2,h=ch/2,dp=.01,V=[];const q=(a,b,c,d,n,f)=>{const t=[[0,0],[1,0],[1,1],[0,0],[1,1],[0,1]],nn=Array.isArray(n[0])?[n[0],n[1],n[2],n[0],n[2],n[3]]:null;[a,b,c,a,c,d].forEach((P,i)=>V.push(...P,...(nn?nn[i]:n),...t[i],f))};
     q([-w,-h,0],[w,-h,0],[w,h,0],[-w,h,0],[0,0,1],1);q([w,-h,0],[w,-h,-dp],[w,h,-dp],[w,h,0],[1,0,0],0);q([-w,-h,-dp],[-w,-h,0],[-w,h,0],[-w,h,-dp],[-1,0,0],0);
     q([-w,h,0],[w,h,0],[w,h,-dp],[-w,h,-dp],[0,1,0],0);q([-w,-h,-dp],[w,-h,-dp],[w,-h,0],[-w,-h,0],[0,-1,0],0);q([w,-h,-dp],[-w,-h,-dp],[-w,h,-dp],[w,h,-dp],[0,0,-1],0);
@@ -3020,8 +3038,8 @@ void main(){vec3 n0=normalize(vN);vec3 n=n0;if(uHas>.5){float dx=hh(vUV+vec2(uTx
     if(state.src==='std'||RM){g.useProgram(progW);g.bindBuffer(g.ARRAY_BUFFER,bufW);const st2=36;[['aP',3,0],['aN',3,12],['aUV',2,24],['aF',1,32]].forEach(([n,s,o])=>{const l=g.getAttribLocation(progW,n);g.enableVertexAttribArray(l);g.vertexAttribPointer(l,s,g.FLOAT,false,st2,o)});
       common(progW);let cam,tgt=[0,0,0],fov=.62;
       if(RM){const asp=W2/H2,hf=1.2,dz=roomDz(info.wm),d0=Math.min(dz-.3,info.wm/2/Math.tan(hf/2)*1.05);fov=2*Math.atan(Math.tan(hf/2)/asp);fov=Math.min(fov,1.9);
-        const zc=Math.max(.6,Math.min(dz-.25,d0/v.zoom+v.pz)),ey=-info.hm/2+Math.min(1.55,info.hm*.62),xl=info.wm/2-.35,cx=Math.max(-xl,Math.min(xl,v.px));cam=[cx,ey,zc];tgt=[cam[0]-Math.sin(v.yaw)*Math.cos(v.pitch),ey+Math.sin(v.pitch),zc-Math.cos(v.yaw)*Math.cos(v.pitch)]}
-      if(RM&&v.furn&&v.top){/* Übersicht beim Einrichten: Kamera schräg von oben, ganzer Boden im Bild */const asp=W2/H2,dz=roomDz(info.wm),el=1.02;fov=.8;const th=Math.tan(fov/2),R=1.5*Math.max(info.wm/(2*asp*th),(dz*Math.sin(el)+info.hm*Math.cos(el))/(2*th))/(v.tz||1);tgt=[0,-info.hm/2+.4,dz*.47-R*(asp<1?.36:.2)]; /* etwas nach hinten zielen: der Raum rückt unter die Leiste */cam=[0,tgt[1]+R*Math.sin(el),tgt[2]+R*Math.cos(el)]}
+        const BKW=sides.some(s=>s.side==='B'),ey=-info.hm/2+Math.min(1.55,info.hm*.62),xl=info.wm/2-.35,off=Math.max(.3,Math.min(dz/2-.25,d0/v.zoom-dz/2)),zc=BKW?Math.max(.6,Math.min(dz-.6,dz/2+Math.cos(v.yaw)*off+v.pz)):Math.max(.6,Math.min(dz-.25,d0/v.zoom+v.pz)),cx=Math.max(-xl,Math.min(xl,v.px+(BKW?Math.sin(v.yaw)*Math.min(off,xl):0)));cam=[cx,ey,zc];tgt=[cam[0]-Math.sin(v.yaw)*Math.cos(v.pitch),ey+Math.sin(v.pitch),zc-Math.cos(v.yaw)*Math.cos(v.pitch)]}
+      if(RM&&v.furn&&v.top){/* Übersicht beim Einrichten: Kamera schräg von oben, ganzer Boden im Bild */const asp=W2/H2,dz=roomDz(info.wm),BKT=sides.some(s=>s.side==='B'),el=BKT?1.2:1.02;fov=.8;const th=Math.tan(fov/2),R=(BKT?1.85:1.5)*Math.max(info.wm/(2*asp*th),(dz*Math.sin(el)+info.hm*Math.cos(el))/(2*th))/(v.tz||1);tgt=BKT?[0,-info.hm/2,dz*.5-R*(asp<1?.12:.07)]:[0,-info.hm/2+.4,dz*.47-R*(asp<1?.36:.2)]; /* etwas nach hinten zielen: der Raum rückt unter die Leiste */cam=[0,tgt[1]+R*Math.sin(el),tgt[2]+R*Math.cos(el)]}
       else if(RM){}
       else{const d=v.dist/v.zoom;cam=[d*Math.sin(v.yaw)*Math.cos(v.pitch),d*Math.sin(v.pitch),d*Math.cos(v.yaw)*Math.cos(v.pitch)]}
       {const nz=a=>{const l=Math.hypot(a[0],a[1],a[2])||1;return[a[0]/l,a[1]/l,a[2]/l]},f=nz([tgt[0]-cam[0],tgt[1]-cam[1],tgt[2]-cam[2]]),r=nz([f[1]*0-f[2]*1,f[2]*0-f[0]*0,f[0]*1-f[1]*0]),u=[r[1]*f[2]-r[2]*f[1],r[2]*f[0]-r[0]*f[2],r[0]*f[1]-r[1]*f[0]];v3ray={cam:cam.slice(),f,r,u,th:Math.tan(fov/2),asp:W2/H2,h:info.hm/2,w:info.wm/2}}
@@ -3036,7 +3054,7 @@ void main(){vec3 n0=normalize(vN);vec3 n=n0;if(uHas>.5){float dx=hh(vUV+vec2(uTx
       if(!homoInv)homo=computeHomo();const isc=[1/W,0,0,0,1/H,0,0,0,1];setU(progC,'uPh2Flat','uniformMatrix3fv',false,T3(mul3(isc,homoInv)));setU(progC,'uMeanL','uniform1f',meanL);
       g.drawArrays(g.TRIANGLES,0,nC)}
     if(v.anim){v.lAng+=v.dir*.6;if(v.lAng>80||v.lAng<-80)v.dir=-v.dir;$('#v3dL').value=Math.round(v.lAng);syncUi();draw()}}
-  function syncUi(){try{syncFurn()}catch(_){}{const r=v.room&&!$('#v3d').hidden;$('#v3dNav').hidden=!r||!!(v.furn&&v.top);$('#v3dViews').hidden=!r;press($('#vwMain'),v.zoom>=.95&&Math.abs(v.yaw)<.05&&!v.px&&!v.pz);press($('#vwRoom'),v.zoom<.95||v.px||v.pz||Math.abs(v.yaw)>=.05);const bar=document.querySelector('.v3dbar');if(bar)$('#v3d').style.setProperty('--v3dbar-h',bar.offsetHeight+'px')}{const e=$('#v3dSides');if(e)e.textContent=(v.room&&sides.length)?[I18N.tr('Hauptwand')].concat(sides.map(s=>I18N.tr(s.side==='L'?'Linke Wand':'Rechte Wand'))).join(' · '):''}$('#v3dLOut').textContent=(v.lAng<-2?'von links ':v.lAng>2?'von rechts ':'frontal ')+Math.abs(Math.round(v.lAng))+'°';press($('#v3dAnim'),v.anim);press($('#v3dLow'),v.low);press($('#v3dRoom'),v.room);$('#v3dSOut').textContent=Math.round(v.amp*100)+' %';const pc=x=>Math.round(x*100)+' %';$('#v3dBOut').textContent=pc(v.bri);$('#v3dHOut').textContent=pc(v.shk);$('#v3dGOut').textContent=pc(v.gl);$('#v3dROut').textContent=pc(v.rough);$('#v3dB').value=v.bri*100;$('#v3dH').value=v.shk*100;$('#v3dG').value=v.gl*100;$('#v3dR').value=v.rough*100;press($('#v3dFine'),!$('#v3dFineBox').hidden)}
+  function syncUi(){try{syncFurn()}catch(_){}{const r=v.room&&!$('#v3d').hidden;$('#v3dNav').hidden=!r||!!(v.furn&&v.top);$('#v3dViews').hidden=!r;press($('#vwMain'),v.zoom>=.95&&Math.abs(v.yaw)<.05&&!v.px&&!v.pz);press($('#vwRoom'),v.zoom<.95||v.px||v.pz||Math.abs(v.yaw)>=.05);const bar=document.querySelector('.v3dbar');if(bar)$('#v3d').style.setProperty('--v3dbar-h',bar.offsetHeight+'px')}{const e=$('#v3dSides');if(e)e.textContent=(v.room&&sides.length)?[I18N.tr('Hauptwand')].concat(sides.map(s=>I18N.tr(s.side==='L'?'Linke Wand':s.side==='B'?'Rückwand':'Rechte Wand'))).join(' · '):''}$('#v3dLOut').textContent=(v.lAng<-2?'von links ':v.lAng>2?'von rechts ':'frontal ')+Math.abs(Math.round(v.lAng))+'°';press($('#v3dAnim'),v.anim);press($('#v3dLow'),v.low);press($('#v3dRoom'),v.room);$('#v3dSOut').textContent=Math.round(v.amp*100)+' %';const pc=x=>Math.round(x*100)+' %';$('#v3dBOut').textContent=pc(v.bri);$('#v3dHOut').textContent=pc(v.shk);$('#v3dGOut').textContent=pc(v.gl);$('#v3dROut').textContent=pc(v.rough);$('#v3dB').value=v.bri*100;$('#v3dH').value=v.shk*100;$('#v3dG').value=v.gl*100;$('#v3dR').value=v.rough*100;press($('#v3dFine'),!$('#v3dFineBox').hidden)}
   function resetView(){if(v.room){v.yaw=0;v.pitch=-.1;v.zoom=.55;v.px=0;v.pz=0;draw();return}v.yaw=state.src==='std'?-.32:-.35;v.pitch=state.src==='std'?.07:.08;v.zoom=1;draw()}
   function open(){if(state.editPart>=0){exitPart()}if(state.src==='foto'&&!state.wallReady){toast('Zuerst die Wandfläche festlegen und „✓ Fläche fertig“ tippen.',3000);return}
     $('#v3d').hidden=false;$('#v3dHint').textContent=v.room?'Ziehen zum Umschauen · zwei Finger oder Mausrad zum Näherkommen':state.src==='std'?'Ziehen zum Drehen · zwei Finger oder Mausrad zum Zoomen':'Ziehen zum Drehen wie ein Foto in der Hand · zwei Finger oder Mausrad zum Zoomen';
@@ -3063,9 +3081,9 @@ void main(){vec3 n0=normalize(vN);vec3 n=n0;if(uHas>.5){float dx=hh(vUV+vec2(uTx
   function wire(){const pts=new Map();let p0=0,z0=1;const c=$('#v3dCv');
     c.addEventListener('pointerdown',e=>{if(e.isPrimary){pts.clear();fDrag=null}try{c.setPointerCapture(e.pointerId)}catch(_){}pts.set(e.pointerId,[e.clientX,e.clientY]);if(v.furn&&v.room&&pts.size===1){const hit=furnPick(e);if(hit){fSel=hit.k;fDrag=hit;regeom();syncFurn();draw()}else if(fSel){fSel=null;regeom();syncFurn();draw()}}else fDrag=null;if(pts.size===2){const[a,b]=[...pts.values()];p0=Math.hypot(a[0]-b[0],a[1]-b[1]);z0=(v.room&&v.furn&&v.top)?(v.tz||1):v.zoom}});
     c.addEventListener('pointermove',e=>{if(!pts.has(e.pointerId))return;const q=pts.get(e.pointerId),dx=e.clientX-q[0],dy=e.clientY-q[1];pts.set(e.pointerId,[e.clientX,e.clientY]);
-      if(pts.size===1&&fDrag){const R=furnRay(e),I=FI[fDrag.k];if(R&&I&&Math.abs(R.d[1])>1e-4){const t=(fDrag.py-R.o[1])/R.d[1];if(t>0&&t<60){const dz=roomDz(info.wm),m=Math.min(I.hx,I.hz),nx=Math.max(-v3ray.w+m,Math.min(v3ray.w-m,R.o[0]+R.d[0]*t-fDrag.gx)),nz=Math.max(I.wall?-9:m*.2,Math.min(dz-m,R.o[2]+R.d[2]*t-fDrag.gz));fSet(fDrag.k,nx-I.bx,I.wall?fOff(fDrag.k)[1]:nz-I.bz);fDrag.moved=true;regeom();draw()}}return}
+      if(pts.size===1&&fDrag){const R=furnRay(e),I=FI[fDrag.k];if(R&&I&&Math.abs(R.d[1])>1e-4){const t=(fDrag.py-R.o[1])/R.d[1];if(t>0&&t<60&&I.side){const m=Math.min(I.hx,I.hz),[lx,lz]=I.toL(R.o[0]+R.d[0]*t-fDrag.gx,R.o[2]+R.d[2]*t-fDrag.gz),nx=Math.max(-I.sw+m,Math.min(I.sw-m,lx)),nz=Math.max(m*.2,Math.min(I.sd-m,lz));sideEdit(fDrag.k,k=>fSet(k,nx-I.lbx,I.wall?fOff(k)[1]:nz-I.lbz));fDrag.moved=true;regeom();draw()}else if(t>0&&t<60){const dz=roomDz(info.wm),m=Math.min(I.hx,I.hz),nx=Math.max(-v3ray.w+m,Math.min(v3ray.w-m,R.o[0]+R.d[0]*t-fDrag.gx)),nz=Math.max(I.wall?-9:m*.2,Math.min(dz-m,R.o[2]+R.d[2]*t-fDrag.gz));fSet(fDrag.k,nx-I.bx,I.wall?fOff(fDrag.k)[1]:nz-I.bz);fDrag.moved=true;regeom();draw()}}return}
       if(pts.size===1&&(v.room&&v.furn&&v.top))return; /* Übersicht: Ansicht bleibt stehen, nur Möbel werden gezogen */
-      if(pts.size===1){if(v.room){v.yaw=Math.max(-1.1,Math.min(1.1,v.yaw+dx*.004));v.pitch=Math.max(-.45,Math.min(.45,v.pitch-dy*.004))}else if(state.src==='std'){v.yaw=Math.max(-1.25,Math.min(1.25,v.yaw-dx*.006));v.pitch=Math.max(-.15,Math.min(.75,v.pitch+dy*.005))}else{v.yaw=Math.max(-1.3,Math.min(1.3,v.yaw-dx*.006));v.pitch=Math.max(-.9,Math.min(.9,v.pitch+dy*.005))}draw()}
+      if(pts.size===1){if(v.room){v.yaw=sides.some(s=>s.side==='B')?v.yaw+dx*.004:Math.max(-1.1,Math.min(1.1,v.yaw+dx*.004));v.pitch=Math.max(-.45,Math.min(.45,v.pitch-dy*.004))}else if(state.src==='std'){v.yaw=Math.max(-1.25,Math.min(1.25,v.yaw-dx*.006));v.pitch=Math.max(-.15,Math.min(.75,v.pitch+dy*.005))}else{v.yaw=Math.max(-1.3,Math.min(1.3,v.yaw-dx*.006));v.pitch=Math.max(-.9,Math.min(.9,v.pitch+dy*.005))}draw()}
       else if(pts.size===2&&(v.room&&v.furn&&v.top)){const[a,b]=[...pts.values()];v.tz=Math.max(.5,Math.min(3,z0*Math.hypot(a[0]-b[0],a[1]-b[1])/p0));draw()}
       else if(pts.size===2){const[a,b]=[...pts.values()];v.zoom=Math.max(v.room?.45:.6,Math.min(v.room?4:10,z0*Math.hypot(a[0]-b[0],a[1]-b[1])/p0));draw()}});
     const up=e=>{pts.delete(e.pointerId);if(fDrag){if(fDrag.moved){try{touchProject();schedule()}catch(_){}}fDrag=null}};c.addEventListener('pointerup',up);c.addEventListener('pointercancel',up);
@@ -3095,9 +3113,9 @@ void main(){vec3 n0=normalize(vN);vec3 n=n0;if(uHas>.5){float dx=hh(vUV+vec2(uTx
       for(let i=0;i<3;i++){if(Math.abs(ld[i])<1e-6){if(lo[i]<mn[i]||lo[i]>mx[i]){ok=false;break}}else{let a=(mn[i]-lo[i])/ld[i],b2=(mx[i]-lo[i])/ld[i];if(a>b2){const q=a;a=b2;b2=q}t0=Math.max(t0,a);t1=Math.min(t1,b2);if(t0>t1){ok=false;break}}}
       if(ok&&t0>.02&&(!best||t0<best.t)){const py=R.o[1]+R.d[1]*t0;best={k,t:t0,py,gx:R.o[0]+R.d[0]*t0-I.cx,gz:R.o[2]+R.d[2]*t0-I.cz}}}
     return best}
-  function furnTurn(d){if(!fSel||!FI[fSel]||FI[fSel].wall)return;fRot(fSel,d);regeom();draw();try{touchProject()}catch(_){}}
+  function furnTurn(d){if(!fSel||!FI[fSel]||FI[fSel].wall)return;if(!sideEdit(fSel,k=>fRot(k,d)))fRot(fSel,d);regeom();draw();try{touchProject()}catch(_){}}
   function syncFurn(){const r=v.room&&!$('#v3d').hidden,b=$('#vwFurn'),bar=$('#furnBar');if(!b)return;b.hidden=!r;press(b,!!v.furn);{const was=bar.hidden;bar.hidden=!(r&&v.furn);if(bar.hidden)return;if(was)furnBarPos()}
-    const L=(FURN[ROOM.type]||[]).find(f=>f[0]===fBase(fSel)),I=fSel&&FI[fSel],nr=fSel&&fSel.includes('#')?' '+fSel.split('#')[1]:'';$('#furnName').textContent=L?I18N.tr(L[1])+nr:I18N.tr('Möbel antippen und ziehen');const rot=!!(L&&I&&!I.wall);$('#furnL').hidden=$('#furnR').hidden=$('#furn90').hidden=!rot;
+    const L=(FURN[ROOM.type]||[]).find(f=>f[0]===fBase(fSel)),I=fSel&&FI[fSel],nr=fSel&&fSel.includes('#')?' '+fSel.split('#')[1]:'';const wn=I&&I.side?' · '+I18N.tr(I.side==='L'?'Linke Wand':I.side==='R'?'Rechte Wand':'Rückwand'):'';$('#furnName').textContent=L?I18N.tr(L[1])+nr+wn:I18N.tr('Möbel antippen und ziehen');const rot=!!(L&&I&&!I.wall);$('#furnL').hidden=$('#furnR').hidden=$('#furn90').hidden=!rot;
     press($('#furnTop'),!!v.top);$('#furnOut').hidden=$('#furnIn').hidden=!v.top;
     const hasS=!!(sides&&sides.length),dz=info?roomDz(info.wm):6,sl=$('#roomDepth');sl.disabled=hasS;sl.value=Math.max(2.5,Math.min(10,dz));$('#roomDepthOut').textContent=hasS?I18N.tr('durch Seitenwände bestimmt'):dz.toFixed(1).replace('.',',')+' m'}
   return{wire,tex2D,open,close}})();
@@ -3308,6 +3326,9 @@ const I18N=(function(){const D={"Lichtschalter":["Light switch","Interruttore","
 "Die neue Wand wird automatisch die rechte Wand.": ["The new wall automatically becomes the right wall.", "La nuova parete diventa automaticamente quella destra.", "Az új fal automatikusan a jobb fal lesz."],
 "Links und rechts sind schon belegt – diese Wand erscheint nicht im 3D-Raum.": ["Left and right are already taken – this wall won't appear in the 3D room.", "Sinistra e destra sono già occupate – questa parete non appare nella stanza 3D.", "A bal és jobb fal már foglalt – ez a fal nem jelenik meg a 3D szobában."],
 "Linke Wand": ["Left wall", "Parete sinistra", "Bal fal"],
+"Rückwand": ["Back wall", "Parete di fondo", "Hátsó fal"],
+"Die neue Wand wird automatisch die Rückwand.": ["The new wall automatically becomes the back wall.", "La nuova parete diventa automaticamente la parete di fondo.", "Az új fal automatikusan a hátsó fal lesz."],
+"Rückwand = die Wand gegenüber der Hauptwand.": ["Back wall = the wall opposite the main wall.", "Parete di fondo = la parete di fronte alla parete principale.", "Hátsó fal = a főfallal szemközti fal."],
 "Rechte Wand": ["Right wall", "Parete destra", "Jobb fal"],
 "Abstand von links": ["From left", "Da sinistra", "Balról"],
 "Breite": ["Width", "Larghezza", "Szélesség"],
