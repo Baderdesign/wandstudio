@@ -1026,6 +1026,7 @@ body.mode-simple #v3dFine,body.mode-simple #v3dFineBox{display:none!important}
   <p class="hint">Wandbild, Technik, Farbtöne und Schablonen kommen automatisch hinein. Notiz und Preis sind freiwillig.</p>
   <label class="lbl" for="kpTitle">Titel</label><input class="sheetinput" id="kpTitle" type="text" placeholder="z. B. Wohnzimmer, Familie Muster" autocomplete="off">
   <label class="lbl" for="kpNote">Notiz für den Kunden</label><textarea class="sheetinput" id="kpNote" rows="3" placeholder="z. B. Ausführung nach Absprache, Muster wird vor Ort freigegeben." style="resize:vertical;min-height:72px;font:inherit"></textarea>
+  <label class="kpchk" style="display:flex;align-items:center;gap:10px;margin:10px 0 2px;font-size:15px"><input type="checkbox" id="kpArea" checked style="width:20px;height:20px;accent-color:var(--accent)"> Fläche (m²) im PDF zeigen</label>
   <label class="lbl" for="kpPrice">Preis</label><input class="sheetinput" id="kpPrice" type="text" placeholder="z. B. CHF 2'450.– inkl. Material, exkl. MwSt." autocomplete="off">
   <div class="seg" style="margin-top:12px"><button class="chipb kmain" id="kpShare" type="button">PDF teilen</button><button class="chipb" id="kpSave" type="button">PDF speichern</button><button class="chipb" id="kpImg" type="button">Als Bild teilen</button></div>
   <p class="hint" id="kpInfo" style="margin-top:8px"></p>
@@ -2424,7 +2425,7 @@ $('#projBtn').onclick=()=>{$('#projSheet').hidden=false;listProjects()};$('#proj
 $('#projSave').onclick=()=>saveProject();
 $('#projNew').onclick=()=>{curProject=null;$('#projName').value='';walls=[null];curWall=0;state._thumb='';loadWall(blankStd());$('#projSheet').hidden=true;toast('Neues Projekt begonnen.',1500)};
 $('#closeOv').onclick=()=>{$('#overlay').hidden=true};
-const APP_VER=145,APP_LABEL='1.0.3';
+const APP_VER=146,APP_LABEL='1.0.3';
 
 /* ---------- KI: Wand antippen – läuft auf eigener Seite (ki.html), damit genug Speicher frei ist ---------- */
 const AI=(function(){
@@ -2483,6 +2484,11 @@ function openOrder(){const L=decoramaUsed();if(!L.length){toast('In dieser Gesta
 $('#ordDec').onclick=openOrder;$('#ordClose').onclick=()=>{$('#ordSheet').hidden=true};
 $('#ordCopy').onclick=async()=>{const t=$('#ordTxt').textContent;try{await navigator.clipboard.writeText(t);toast('Text kopiert.',2000)}catch(e){const r=document.createRange();r.selectNodeContents($('#ordTxt'));const sl=getSelection();sl.removeAllRanges();sl.addRange(r);toast('Text markiert – jetzt kopieren.',2600)}};
 /* ---------- Datenblatt: Technik, Hersteller, Farbtöne, Schablonen ---------- */
+/* Quadratmeter: jede Wand des Projekts, Fenster (110 × 120 cm) und Tür (90 × 210 cm) werden abgezogen */
+function wallAreas(){const list=[];(walls.length?walls:[null]).forEach((w,i)=>{const r=i===curWall||!w?{role:state.role,src:state.src,wallW:state.wallW,wallM:state.wallM,wallH:state.wallH,scene:state.scene}:w;if(!r||!(r.wallM||r.wallW))return;
+    const W=+(r.wallW||r.wallM)||0,H=+r.wallH||0,sc=r.scene||{},std=r.src==='std',nw=std&&sc.window?elN(sc,'window'):0,nd=std&&sc.door?1:0,gross=W*H,open=nw*1.1*1.2+nd*.9*2.1;
+    list.push({name:I18N.tr(ROLE_N[r.role||['main','left','right','back'][i]]||('Wand '+(i+1))),W,H,gross,nw,nd,open,net:Math.max(0,gross-open),foto:!std})});
+  return{list,gross:list.reduce((a,b)=>a+b.gross,0),net:list.reduce((a,b)=>a+b.net,0),open:list.reduce((a,b)=>a+b.open,0)}}
 function makeSheet(o){o=o||{};const T=x=>(typeof I18N!=='undefined'?I18N.tr(x):x);
   const ew=state.editWall,bf=state.before;state.editWall=false;state.before=false;render();
   const SW=1240,M=70,CW=SW-2*M,img=cv,ih=Math.min(Math.round(CW*img.height/img.width),o.kunde?600:1e5),iw=Math.round(ih*img.width/img.height),ix=M+Math.round((CW-iw)/2);
@@ -2490,7 +2496,12 @@ function makeSheet(o){o=o||{};const T=x=>(typeof I18N!=='undefined'?I18N.tr(x):x
   const effN=k=>{const e=EFFECTS.find(x=>x[0]===k)||EFFECTS_ALL.find(x=>x[0]===k);return e?T(e[1]):k},modeN=k=>{const m=MODES.find(x=>x[0]===k);return m?T(m[1]):k};
   const NOVA={africa:'Novacolor',calce:'Novacolor',ironic:'Novacolor'};
   const secs=[];const ws=state.wallW?state.wallW:state.wallM;
-  if(!o.kunde)secs.push({h:T('Wand'),rows:[[T('Ausgangsbild'),state.src==='foto'?T('Eigenes Foto'):T('Standardwand')],[T('Wandmass'),nf(ws,2)+' × '+nf(state.wallH,2)+' m'],[T('Fläche ca.'),nf(ws*state.wallH,1)+' m²']]});
+  {const A=wallAreas(),cur=A.list[Math.min(curWall,A.list.length-1)]||{W:ws,H:state.wallH,gross:ws*state.wallH,open:0,net:ws*state.wallH,nw:0,nd:0};
+    const opTxt=x=>[x.nw?x.nw+' '+T(x.nw===1?'Fenster':'Fenster'):'',x.nd?x.nd+' '+T('Tür'):''].filter(Boolean).join(', ');
+    if(!o.kunde){const r=[[T('Ausgangsbild'),state.src==='foto'?T('Eigenes Foto'):T('Standardwand')],[T('Wandmass'),nf(cur.W,2)+' × '+nf(cur.H,2)+' m'],[T('Fläche brutto'),nf(cur.gross,1)+' m²']];
+      if(cur.open)r.push([T('abzüglich')+' '+opTxt(cur),'− '+nf(cur.open,1)+' m²'],[T('Fläche netto'),nf(cur.net,1)+' m²']);secs.push({h:T('Wand'),rows:r})}
+    if((o.kunde?o.area!==false:A.list.length>1)&&A.list.length){const r=A.list.map(x=>[x.name+' · '+nf(x.W,2)+' × '+nf(x.H,2)+' m'+(x.foto?' ('+T('aus Foto')+')':''),(x.open?nf(x.net,1)+' m² '+T('netto'):nf(x.gross,1)+' m²')]);
+      if(A.open)r.push([T('Fenster und Türen abgezogen'),'− '+nf(A.open,1)+' m²']);r.push([T('Total ca.'),nf(A.net,1)+' m²']);if(o.kunde)o._area={h:T('Fläche'),rows:r};else secs.push({h:T('Fläche'),rows:r})}}
   const b=state.base;if(b.on){const r=[[T('Technik'),effN(b.effect)]];if(NOVA[b.effect])r.push([T('Hersteller'),NOVA[b.effect]]);
     if(b.effect==='sichtbeton'||b.effect==='beton')r.push([T('Ausführung'),b.bfin==='deckend'?T('Deckend gestrichen'):T('Lasiert (mit Wolken)')]);
     r.push([T('Farbton'),col(b.color,b.ncs),b.color]);secs.push({h:T('Grundton'),rows:r})}
@@ -2507,6 +2518,7 @@ function makeSheet(o){o=o||{};const T=x=>(typeof I18N!=='undefined'?I18N.tr(x):x
   const g=state.gi;if(g&&g.on){const r=[[T('Grund in der Insel'),col(g.color,g.ncs),g.color]];if(g.eff)r.unshift([T('Technik in der Insel'),effN(g.eff)]);if(g.glaze)r.push([T('Lasur über die Insel'),col(g.glazeColor,g.glazeNcs)+'  ·  '+pct(g.glazeAlpha),g.glazeColor]);secs.push({h:T('Gemeinsame Insel über alle Schablonen'),rows:r})}
   const sc=state.scene||{};if(sc.kitchen&&sc.kitchen.length&&sc.kColor){const kc=(typeof KCOL!=='undefined'&&KCOL.find?KCOL.find(x=>x[0]===sc.kColor||x[1]===sc.kColor):null);secs.push({h:T('Küche'),rows:[[T('Fronten'),kc?T(kc[0]):hex(sc.kColor)]]})}
   const F='"Archivo",system-ui,sans-serif';
+  if(o._area)secs.push(o._area);
   if(o.note&&o.note.trim()){const mt=mk(4,4).getContext('2d');mt.font='500 23px '+F;const lines=[];o.note.trim().split(/\n/).forEach(par=>{let ln='';par.split(/\s+/).forEach(w=>{const tr=ln?ln+' '+w:w;if(mt.measureText(tr).width>CW-40&&ln){lines.push(ln);ln=w}else ln=tr});lines.push(ln)});secs.push({h:T('Notiz'),text:lines})}
   if(o.price&&o.price.trim())secs.push({h:T('Preis'),price:o.price.trim()});
   // Höhe berechnen
@@ -2562,12 +2574,12 @@ async function shareOrSave(b,name,title){const f=new File([b],name,{type:b.type}
   saveBlob(b,name);return 'save'}
 const KP={get(k){try{return localStorage.getItem('ws-kpdf-'+k)||''}catch(e){return ''}},set(k,v){try{localStorage.setItem('ws-kpdf-'+k,v)}catch(e){}}};
 function kpdfName(){const t=($('#kpTitle').value||'Wandgestaltung').replace(/[^\p{L}\p{N} _-]+/gu,'').trim().replace(/\s+/g,'-')||'Wandgestaltung';return 'Bader-Wallstudio-'+t+'-'+new Date().toISOString().slice(0,10)}
-function kpdfOpts(){return{kunde:true,title:$('#kpTitle').value.trim(),note:$('#kpNote').value,price:$('#kpPrice').value}}
+function kpdfOpts(){return{kunde:true,title:$('#kpTitle').value.trim(),note:$('#kpNote').value,price:$('#kpPrice').value,area:$('#kpArea').checked}}
 function kpdfPrev(){const c=makeSheet(kpdfOpts()),pg=sheetPages(c);$('#kpPrev').innerHTML='';pg.forEach(p=>{const im=new Image();im.src=p.toDataURL('image/jpeg',.7);im.alt='';$('#kpPrev').appendChild(im)});$('#kpInfo').textContent=pg.length===1?I18N.tr('1 Seite A4'):pg.length+' '+I18N.tr('Seiten A4');return pg}
 function openKpdf(){const pid=curProject||'';const last=KP.get('pid');if(last!==pid){$('#kpNote').value='';$('#kpPrice').value=''}else{$('#kpNote').value=KP.get('note');$('#kpPrice').value=KP.get('price')}
-  $('#kpTitle').value=KP.get('pid')===pid&&KP.get('title')?KP.get('title'):(($('#projName')||{}).value||'');$('#kpdfSheet').hidden=false;kpdfPrev()}
-function kpdfKeep(){KP.set('pid',curProject||'');KP.set('title',$('#kpTitle').value);KP.set('note',$('#kpNote').value);KP.set('price',$('#kpPrice').value)}
-let kpT=0;['kpTitle','kpNote','kpPrice'].forEach(id=>$('#'+id).addEventListener('input',()=>{kpdfKeep();clearTimeout(kpT);kpT=setTimeout(kpdfPrev,500)}));
+  $('#kpTitle').value=KP.get('pid')===pid&&KP.get('title')?KP.get('title'):(($('#projName')||{}).value||'');$('#kpArea').checked=KP.get('area')!=='0';$('#kpdfSheet').hidden=false;kpdfPrev()}
+function kpdfKeep(){KP.set('area',$('#kpArea').checked?'1':'0');KP.set('pid',curProject||'');KP.set('title',$('#kpTitle').value);KP.set('note',$('#kpNote').value);KP.set('price',$('#kpPrice').value)}
+let kpT=0;['kpTitle','kpNote','kpPrice','kpArea'].forEach(id=>$('#'+id).addEventListener(id==='kpArea'?'change':'input',()=>{kpdfKeep();clearTimeout(kpT);kpT=setTimeout(kpdfPrev,id==='kpArea'?0:500)}));
 async function kpdfRun(mode){const btn=mode==='img'?$('#kpImg'):mode==='save'?$('#kpSave'):$('#kpShare');const old=btn.textContent;btn.disabled=true;btn.textContent=I18N.tr('Wird erstellt …');
   try{kpdfKeep();const nm=kpdfName();let b,fn;
     if(mode==='img'){b=await new Promise(r=>makeSheet(kpdfOpts()).toBlob(r,'image/jpeg',.88));fn=nm+'.jpg'}else{b=await makePdf(sheetPages(makeSheet(kpdfOpts())));fn=nm+'.pdf'}
