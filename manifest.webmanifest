@@ -3,7 +3,7 @@
   "short_name": "Bader Wallstudio",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#000000",
+  "background_color": "#0c0b09",
   "theme_color": "#000000",
   "lang": "de-CH",
   "icons": [
