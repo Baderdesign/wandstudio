@@ -163,7 +163,7 @@ input[type=number]{font:inherit;width:110px;padding:8px 10px;border:1px solid va
 .elnum{display:flex;align-items:center;gap:8px;padding:2px 14px 10px 44px;font-size:14px;color:var(--muted)}.elnum span{flex:1}.elnum .chipb{min-width:40px;padding:6px 0;text-align:center}.elnum output{min-width:22px;text-align:center;font-weight:600;color:var(--fg)}
 #furnBtns{display:flex;flex-direction:column;max-height:300px;overflow-y:auto;-webkit-overflow-scrolling:touch;border-top:1px solid var(--line);overscroll-behavior:contain}
 #furnBtns .elrow{width:100%;font:inherit;font-size:15px;display:flex;align-items:center;gap:12px;text-align:left;justify-content:flex-start;background:transparent;border:0;border-bottom:1px solid var(--line);border-radius:0;color:var(--fg);padding:11px 14px;min-height:44px;box-shadow:none}
-#furnBtns .frow{display:flex;align-items:center;border-bottom:1px solid var(--line)}#furnBtns .frow:last-child{border-bottom:0}#furnBtns .frow .elrow{flex:1;border-bottom:0;min-width:0}
+#furnBtns .frow{display:flex;align-items:center;border-bottom:1px solid var(--line)}#furnBtns .fwid{display:flex;align-items:center;gap:10px;padding:8px 14px 12px 50px;border-bottom:1px solid var(--line);font-size:14px;color:var(--mut,inherit)}#furnBtns .fwid input[type=number]{width:72px;flex:none;min-height:36px;padding:4px 8px;font:inherit;text-align:right}#furnBtns .frow:last-child{border-bottom:0}#furnBtns .frow .elrow{flex:1;border-bottom:0;min-width:0}
 #furnBtns .fcnt{display:flex;align-items:center;gap:6px;padding-right:12px;flex:0 0 auto}#furnBtns .fcnt .chipb{min-width:38px;padding:6px 0;text-align:center}#furnBtns .fcnt output{min-width:20px;text-align:center;font-weight:600}
 #furnBtns .elrow .ck{width:20px;height:20px;border-radius:5px;border:1.5px solid var(--muted);display:grid;place-items:center;flex:0 0 auto;font-size:13px;line-height:1}
 #furnBtns .elrow[aria-pressed="true"] .ck{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
@@ -615,6 +615,7 @@ body.mode-simple #v3dFine,body.mode-simple #v3dFineBox{display:none!important}
 .ownsw input{width:44px;height:26px;appearance:none;-webkit-appearance:none;border-radius:13px;background:var(--line);position:relative;cursor:pointer;transition:background .15s;flex:0 0 auto;margin:0}
 .ownsw input::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:left .15s}
 .ownsw input:checked{background:var(--accent)}.ownsw input:checked::after{left:21px}
+#kpPrev img{height:220px;width:auto;border-radius:6px;box-shadow:0 2px 10px rgba(0,0,0,.25);flex:none;background:#fff}
 </style>
 
 <div class="app">
@@ -904,7 +905,7 @@ body.mode-simple #v3dFine,body.mode-simple #v3dFineBox{display:none!important}
       </div>
       <div class="field">
         <div class="lbl">Export</div>
-        <div class="seg"><button class="chipb" id="expImg" type="button">Bild speichern</button><button class="chipb" id="expDs" type="button">Datenblatt</button><button class="chipb" id="ordDec" type="button">Schablonen bestellen</button></div>
+        <div class="seg"><button class="chipb kmain" id="expKpdf" type="button">Kunden-PDF</button><button class="chipb" id="expImg" type="button">Bild speichern</button><button class="chipb" id="expDs" type="button">Datenblatt</button><button class="chipb" id="ordDec" type="button">Schablonen bestellen</button></div>
       </div>
       <div class="field" id="offField">
         <div class="lbl">Offline</div>
@@ -954,6 +955,9 @@ body.mode-simple #v3dFine,body.mode-simple #v3dFineBox{display:none!important}
     <div class="lbl">Gespeicherte Projekte</div>
     <div class="plist" id="projList"></div><div class="lbl" id="inspLbl" hidden style="margin-top:18px">Inspiration</div><div class="plist" id="inspList"></div>
     <p class="hint">Projekte werden auf diesem Gerät gespeichert (mit allen Wänden, Fotos und Schablonen). Ein offenes Projekt wird bei Änderungen automatisch gesichert.</p>
+    <div class="lbl" style="margin-top:14px">Sichern &amp; übertragen</div>
+    <div class="seg"><button class="chipb" id="projBackup" type="button">Projekte sichern</button><button class="chipb" id="projRestore" type="button">Projekte laden</button></div><input type="file" id="projFile" accept=".wallstudio,application/json" hidden>
+    <p class="hint">Sichert alle Projekte in eine Datei (z. B. in iCloud, Google Drive oder per E-Mail an dich). Mit «Projekte laden» holst du sie auf einem anderen Gerät oder nach einem Umzug der App zurück. Vorhandene Projekte werden nicht gelöscht.</p>
   </div>
 </div>
 <div class="sheetwrap" id="cpSheet" hidden>
@@ -1009,6 +1013,17 @@ body.mode-simple #v3dFine,body.mode-simple #v3dFineBox{display:none!important}
     <button class="acclink" id="legalLock" type="button">Nutzung &amp; Datenschutz</button>
   </div>
 </div>
+<div class="accwrap" id="kpdfSheet" hidden><div class="accpanel">
+  <div class="acctop"><b>Kunden-PDF</b><button class="sbtn" id="kpClose" type="button">Schliessen</button></div>
+  <p class="hint">Wandbild, Technik, Farbtöne und Schablonen kommen automatisch hinein. Notiz und Preis sind freiwillig.</p>
+  <label class="lbl" for="kpTitle">Titel</label><input class="sheetinput" id="kpTitle" type="text" placeholder="z. B. Wohnzimmer, Familie Muster" autocomplete="off">
+  <label class="lbl" for="kpNote">Notiz für den Kunden</label><textarea class="sheetinput" id="kpNote" rows="3" placeholder="z. B. Ausführung nach Absprache, Muster wird vor Ort freigegeben." style="resize:vertical;min-height:72px;font:inherit"></textarea>
+  <label class="lbl" for="kpPrice">Preis</label><input class="sheetinput" id="kpPrice" type="text" placeholder="z. B. CHF 2'450.– inkl. Material, exkl. MwSt." autocomplete="off">
+  <div class="seg" style="margin-top:12px"><button class="chipb kmain" id="kpShare" type="button">PDF teilen</button><button class="chipb" id="kpSave" type="button">PDF speichern</button><button class="chipb" id="kpImg" type="button">Als Bild teilen</button></div>
+  <p class="hint" id="kpInfo" style="margin-top:8px"></p>
+  <div id="kpPrev" style="display:flex;gap:10px;overflow-x:auto;padding:4px 0 8px"></div>
+  <p class="hint">«PDF teilen» öffnet WhatsApp, E-Mail usw. Das PDF entsteht auf deinem Gerät, es wird nichts hochgeladen.</p>
+</div></div>
 <div class="accwrap" id="ordSheet" hidden><div class="accpanel">
   <div class="acctop"><b>Schablonen bestellen</b><button class="sbtn" id="ordClose" type="button">Schliessen</button></div>
   <p class="hint" id="ordInfo"></p>
@@ -1526,8 +1541,8 @@ function drawFurn2D(t){FURN_HIT=[];if(typeof ROOM==='undefined'||!ROOM.furn)retu
     add('bed',.05,[-.95,.95,2.1,106],(X,B)=>{if(photoCached('bed',t,U,X(-.95),X(.95),B(2.1)))return;const x0=X(-.9),x1=X(.9),b=B(2.1);shadow(x0,x1,b,U(105));gr(x0-U(4),b-U(105),x1+U(4),b-U(40),'#a39d94','#8b857d');
       gr(x0+U(12),b-U(68),X(-.06),b-U(54),WH[0],WH[1]);gr(X(.06),b-U(68),x1-U(12),b-U(54),WH[0],WH[1]);gr(x0+U(3),b-U(54),x1-U(3),b-U(32),WH[0],WH[1]);gr(x0,b-U(36),x1,b-U(6),FAB[0],FAB[1])});
     add('chair',1.0,[-wm/2+.25,-wm/2+1.05,1.8,82],(X,B)=>armchair(X(-wm/2+.25),X(-wm/2+1.05),B(1.8)));
-    add('ward',.02,FPHOTO.ward?[wm/2-1.62,wm/2-.02,.62,200]:[wm/2-.72,wm/2-.02,.62,220],(X,B)=>{if(photoCached('ward',t,U,X(wm/2-1.62),X(wm/2-.02),B(.62)))return;const x0=X(wm/2-.72),x1=X(wm/2-.02),b=B(.62);shadow(x0,x1,b,U(220));gr(x0,b-U(220),x1,b,WDC[0],WDC[1]);t.fillStyle='rgba(30,18,10,.55)';t.fillRect((x0+x1)/2,b-U(215),Math.max(1,U(.5)),U(210));t.fillStyle='#b9b4ac';t.fillRect((x0+x1)/2-U(4),b-U(120),U(1.5),U(18));t.fillRect((x0+x1)/2+U(2.5),b-U(120),U(1.5),U(18))});
-    const w2r=F('ward')?wm/2-1.66:wm/2-.02;add('ward2',.02,[w2r-.8,w2r,.62,200],(X,B)=>{const xa=X(w2r-.8),xb=X(w2r),b=B(.62);if(photoCached('ward2',t,U,xa,xb,b))return;shadow(xa,xb,b,U(200));gr(xa,b-U(200),xb,b,'#cfc8bb','#b9b2a5');t.fillStyle='rgba(30,18,10,.5)';t.fillRect((xa+xb)/2,b-U(196),Math.max(1,U(.5)),U(192))});
+    {const W=fWid('ward');add('ward',.02,[wm/2-.02-W,wm/2-.02,.62,200],(X,B)=>{if(wardImg(W)&&photoCached('wardW',t,U,X(wm/2-.02-W),X(wm/2-.02),B(.62)))return;const x0=X(wm/2-.02-W),x1=X(wm/2-.02),b=B(.62);shadow(x0,x1,b,U(200));gr(x0,b-U(200),x1,b,WDC[0],WDC[1]);t.fillStyle='rgba(30,18,10,.55)';for(let i=1;i<wardMods(W)*2;i++)t.fillRect(x0+(x1-x0)*i/(wardMods(W)*2),b-U(196),Math.max(1,U(.5)),U(192))})}
+    const w2r=F('ward')?wm/2-.06-fWid('ward'):wm/2-.02;add('ward2',.02,[w2r-.8,w2r,.62,200],(X,B)=>{const xa=X(w2r-.8),xb=X(w2r),b=B(.62);if(photoCached('ward2',t,U,xa,xb,b))return;shadow(xa,xb,b,U(200));gr(xa,b-U(200),xb,b,'#cfc8bb','#b9b2a5');t.fillStyle='rgba(30,18,10,.5)';t.fillRect((xa+xb)/2,b-U(196),Math.max(1,U(.5)),U(192))});
     add('dress',.02,[-wm/2+.03,-wm/2+.79,.5,110],(X,B)=>{if(photoCached('dress',t,U,X(-wm/2+.03),X(-wm/2+.79),B(.5)))return;const x0=X(-wm/2+.03),x1=X(-wm/2+.78),b=B(.5);shadow(x0,x1,b,U(82));t.fillStyle='#2b2622';t.fillRect(x0+U(4),b-U(8),x1-x0-U(8),U(8));gr(x0,b-U(82),x1,b-U(8),WDC[0],WDC[1]);t.strokeStyle='rgba(30,18,10,.5)';t.lineWidth=Math.max(1,U(.5));[1,2].forEach(i=>{const ly=b-U(8)-(U(74))*i/3;t.beginPath();t.moveTo(x0+U(2),ly);t.lineTo(x1-U(2),ly);t.stroke()})})}
   else if(T==='kueche'){const iw=Math.min(2.4,wm/2*1.1);
     add('island',1.6,[-iw/2,iw/2,2.4,97],(X,B)=>{if(photoCached('island',t,U,X(-iw/2),X(iw/2),B(2.4)))return;const x0=X(-iw/2),x1=X(iw/2),b=B(2.4);shadow(x0,x1,b,U(92));gr(x0,b-U(88),x1,b-U(8),'#4a4e54','#383b40');t.fillStyle='#1f2023';t.fillRect(x0+U(3),b-U(8),x1-x0-U(6),U(8));gr(x0-U(3),b-U(92),x1+U(3),b-U(88),'#c9cbcd','#9a9c9e')});
@@ -2199,7 +2214,7 @@ const FLOORS=[['holz','Parkett',[]],['natura','Naturafloor',[['Sand','#cfc3ae'],
   ['mikro','Mikrozement',[['Hellgrau','#d6d1c9'],['Kiesel','#bdb6ab'],['Stein','#9a958e'],['Schiefer','#6f6c68'],['Sahara','#c9b9a1'],['Petrol','#5e6a6b']]]];
 const FURN={wohnen:[['sofa','Sofa'],['table','Couchtisch'],['chair','Sessel'],['side','Sideboard'],['lamp','Stehlampe'],['rug','Teppich'],['plant','Pflanze']],
   kueche:[['island','Kochinsel'],['stools','Barhocker'],['dining','Esstisch mit Stühlen'],['plant','Pflanze']],
-  schlafen:[['bed','Doppelbett'],['nightL','Nachttisch links'],['nightR','Nachttisch rechts'],['ward','Kleiderschrank 4-türig'],['ward2','Kleiderschrank 2-türig'],['dress','Kommode'],['rug','Teppich'],['chair','Sessel']],
+  schlafen:[['bed','Doppelbett'],['nightL','Nachttisch links'],['nightR','Nachttisch rechts'],['ward','Kleiderschrank'],['ward2','Kleiderschrank 2-türig'],['dress','Kommode'],['rug','Teppich'],['chair','Sessel']],
   bad:[['shower','Duschkabine'],['tub','Badewanne'],['vanity','Waschtisch'],['mirror','Spiegel'],['wc','WC'],['rad','Handtuchheizkörper']],
   wc:[['wc','WC'],['basin','Lavabo'],['mirror','Spiegel']]};
 let ROOM={type:'wohnen',furn:{},floor:{t:'holz',c:'#cfc3ae'}};
@@ -2225,10 +2240,19 @@ function furnMig(){const L=(ROOM.furn||{}).schlafen;if(L&&L.includes('night')){L
 function hasF(k){furnMig();return((ROOM.furn||{})[ROOM.type]||[]).includes(k)}
 const FW={sofa:2.4,chair:1.05,table:1.25,side:1.6,lamp:.5,plant:.85,rug:3.1,bed:2,nightL:.5,nightR:.5,ward:1.65,ward2:.85,dress:.8,island:2.5,stools:1.7};
 const FMAX=6;
+/* Kleiderschrank: Breite frei wählbar (Standard 160 cm), Türen in Zweier-Modulen */
+const WID={ward:[1.0,4.0,1.6]};
+function fWid(k){const d=WID[k];if(!d)return FW[k]||1;const v=+(((ROOM.wid||{})[ROOM.type]||{})[k]);return v>=d[0]&&v<=d[1]?Math.round(v*100)/100:d[2]}
+function fSetWid(k,v){const d=WID[k];if(!d)return;if(!ROOM.wid)ROOM.wid={};const C=ROOM.wid[ROOM.type]||(ROOM.wid[ROOM.type]={});C[k]=Math.max(d[0],Math.min(d[1],Math.round(v*100)/100))}
+function wardMods(W){return Math.max(1,Math.round(W/.9))}
+function wardImg(W){const im=FPHOTO.ward;if(!im)return null;const n=wardMods(W),key='wardW|'+n+'|'+W;if(FPHOTO.wardW&&FPHOTO.wardW._k===key)return FPHOTO.wardW;
+  const nw=im.naturalWidth,nh=im.naturalHeight,cw=Math.round(nw*W/1.6),c=document.createElement('canvas');c.width=cw;c.height=nh;const x=c.getContext('2d'),half=nw/2,mw=cw/n;
+  const ed=Math.round(nw*.02);for(let i=0;i<n;i++){const last=i===n-1&&n>1,sx=last?half:(i>0?ed:0),sw=last?half:half-(i>0?ed:0);x.drawImage(im,sx,0,sw,nh,Math.round(i*mw),0,Math.ceil(mw)+1,nh)}
+  c.naturalWidth=cw;c.naturalHeight=nh;c._k=key;FPHOTO.wardW=c;delete FPC.wardW;return c}
 function fCnt(k){const C=(ROOM.cnt||{})[ROOM.type]||{};return Math.max(1,Math.min(FMAX,C[k]||1))}
 function fSetCnt(k,n){if(!ROOM.cnt)ROOM.cnt={};const C=ROOM.cnt[ROOM.type]||(ROOM.cnt[ROOM.type]={});const old=fCnt(k);n=Math.max(1,Math.min(FMAX,n));C[k]=n;const P=(ROOM.pos||{})[ROOM.type];if(P)for(let i=n+1;i<=old;i++)delete P[k+'#'+i]}
 function fBase(k){return String(k).split('#')[0]}
-function fOff(k){const P=(ROOM.pos||{})[ROOM.type]||{};if(P[k])return P[k];const m=/^(.+)#(\d+)$/.exec(k);if(!m)return[0,0];const i=+m[2],w=(FW[m[1]]||1)+.1;return[(i%2?1:-1)*Math.floor(i/2)*w,0]}
+function fOff(k){const P=(ROOM.pos||{})[ROOM.type]||{};if(P[k])return P[k];const m=/^(.+)#(\d+)$/.exec(k);if(!m)return[0,0];const i=+m[2],w=(WID[m[1]]?fWid(m[1]):(FW[m[1]]||1))+.1;return[(i%2?1:-1)*Math.floor(i/2)*w,0]}
 function fMove(k,dx,dz){if(!ROOM.pos)ROOM.pos={};const P=ROOM.pos[ROOM.type]||(ROOM.pos[ROOM.type]={});const o=P[k]||fOff(k);P[k]=[Math.max(-8,Math.min(8,o[0]+dx)),Math.max(-1.2,Math.min(12,o[1]+dz)),o[2]||0]}
 function fSet(k,x,z){if(!ROOM.pos)ROOM.pos={};const P=ROOM.pos[ROOM.type]||(ROOM.pos[ROOM.type]={});const o=P[k]||fOff(k);P[k]=[Math.max(-8,Math.min(8,x)),Math.max(-1.2,Math.min(12,z)),o[2]||0]}
 function fRot(k,d){if(!ROOM.pos)ROOM.pos={};const P=ROOM.pos[ROOM.type]||(ROOM.pos[ROOM.type]={});const o=P[k]||fOff(k);let r=((o[2]||0)+d)%(2*Math.PI);if(d===null)r=0;P[k]=[o[0],o[1],r]}
@@ -2242,7 +2266,11 @@ function syncRoomUi(){const nm=(ROOMS.find(r=>r[0]===ROOM.type)||ROOMS[0])[1];co
       const row=document.createElement('div');row.className='frow';row.appendChild(b);
       if(on){const c=fCnt(k),box=document.createElement('div');box.className='fcnt';const mk=(t,d,dis)=>{const x=document.createElement('button');x.type='button';x.className='chipb';x.textContent=t;x.disabled=dis;x.setAttribute('aria-label',I18N.tr(n)+(d>0?' +1':' −1'));x.onclick=ev=>{ev.stopPropagation();fSetCnt(k,c+d);syncRoomUi();touchProject();schedule()};return x};
         const o=document.createElement('output');o.textContent=c;o.dataset.noi18n='1';o.dataset.furn=k;box.append(mk('−',-1,c<=1),o,mk('+',1,c>=FMAX));row.appendChild(box)}
-      fb.appendChild(row)});
+      fb.appendChild(row);
+      if(on&&WID[k]){const d=WID[k],wr=document.createElement('div');wr.className='fwid';const lb=document.createElement('span');lb.textContent=I18N.tr('Breite');const r=document.createElement('input');r.type='range';r.min=d[0]*100;r.max=d[1]*100;r.step=10;r.value=Math.round(fWid(k)*100);r.setAttribute('aria-label',I18N.tr(n)+' '+I18N.tr('Breite'));r.dataset.wid=k;
+        const ni=document.createElement('input');ni.type='number';ni.min=d[0]*100;ni.max=d[1]*100;ni.step=1;ni.value=r.value;ni.inputMode='numeric';ni.dataset.wid=k;const cm=document.createElement('span');cm.textContent='cm';cm.dataset.noi18n='1';
+        let wt=0;const set=(v,from)=>{if(!(v>0))return;fSetWid(k,v/100);const nv=Math.round(fWid(k)*100);if(from!==r)r.value=nv;if(from!==ni)ni.value=nv;schedule();clearTimeout(wt);wt=setTimeout(touchProject,600)};
+        r.oninput=()=>set(+r.value,r);ni.onchange=()=>set(+ni.value,null);wr.append(lb,r,ni,cm);fb.appendChild(wr)}});
     $('#furnCount').textContent=cnt?'· '+cnt:'';$('#kitchenBox').hidden=ROOM.type!=='kueche'}
   const fb=$('#floorBtns');fb.innerHTML='';FLOORS.forEach(([k,n,cols])=>{const b=document.createElement('button');b.type='button';b.className='chipb';b.textContent=I18N.tr(n);b.setAttribute('aria-pressed',k===ROOM.floor.t);
     b.onclick=()=>{ROOM.floor.t=k;if(cols.length&&!ROOM.floor.ncs&&!cols.some(c=>c[1]===ROOM.floor.c))ROOM.floor.c=cols[0][1];syncRoomUi();touchProject();schedule()};fb.appendChild(b)});
@@ -2323,7 +2351,7 @@ $('#projBtn').onclick=()=>{$('#projSheet').hidden=false;listProjects()};$('#proj
 $('#projSave').onclick=()=>saveProject();
 $('#projNew').onclick=()=>{curProject=null;$('#projName').value='';walls=[null];curWall=0;state._thumb='';loadWall(blankStd());$('#projSheet').hidden=true;toast('Neues Projekt begonnen.',1500)};
 $('#closeOv').onclick=()=>{$('#overlay').hidden=true};
-const APP_VER=137,APP_LABEL='1.0.3';
+const APP_VER=139,APP_LABEL='1.0.3';
 
 /* ---------- KI: Wand antippen – läuft auf eigener Seite (ki.html), damit genug Speicher frei ist ---------- */
 const AI=(function(){
@@ -2366,6 +2394,8 @@ AI.wire();setTimeout(()=>{try{syncRoomUi()}catch(e){console.error(e)}},0);
 
 /* ---------- Decorama-Schablonen der aktuellen Gestaltung per E-Mail bestellen ---------- */
 const DEC_MAIL='info@decoramahome.it';
+/* Adresse der App: folgt automatisch der Domain, auf der sie läuft (wichtig für den Umzug) */
+const APP_HOME=/^https?:$/.test(location.protocol)&&!/^(localhost|127\.)/.test(location.hostname)?location.origin+location.pathname.replace(/[^/]*$/,''):'https://baderdesign.github.io/wandstudio/';
 function decoramaUsed(){const all=walls.slice();all[curWall]=captureWall();const m=new Map();all.forEach(w=>(w&&w.layers||[]).forEach(l=>{const P0=PATTERNS[l.pattern];if(P0&&String(P0.group||'').startsWith('Decorama')&&!m.has(l.pattern))m.set(l.pattern,P0)}));return[...m.values()]}
 function openOrder(){const L=decoramaUsed();if(!L.length){toast('In dieser Gestaltung sind keine Decorama-Schablonen.',3200);return}
   /* Bestelltext in der Sprache des Benutzers; immer erkennbar als Bestellung über Bader Wallstudio */
@@ -2374,20 +2404,20 @@ function openOrder(){const L=decoramaUsed();if(!L.length){toast('In dieser Gesta
     it:{s:'Ordine stencil tramite Bader Wallstudio',h:'Buongiorno',a:'questo ordine è stato creato con il software di progettazione «Bader Wallstudio».',i:'Vorrei ordinare i seguenti stencil Decorama:',f:'formato',q:'quantità',o:'Vi prego di inviarmi un\'offerta con prezzo e tempi di consegna.',n:'Nome',d:'Indirizzo di consegna',t:'Telefono',g:'Cordiali saluti',z:'Ordinato tramite il software Bader Wallstudio'},
     hu:{s:'Sablonrendelés a Bader Wallstudión keresztül',h:'Jó napot',a:'ez a rendelés a «Bader Wallstudio» tervezőszoftverrel készült.',i:'A következő Decorama sablonokat szeretném megrendelni:',f:'formátum',q:'mennyiség',o:'Kérem, küldjenek árajánlatot az árral és a szállítási idővel.',n:'Név',d:'Szállítási cím',t:'Telefon',g:'Üdvözlettel',z:'Megrendelve a Bader Wallstudio szoftveren keresztül'}};
   const o=OT[I18N.lang]||OT.de,rows=L.map(P0=>'- '+P0.label+'  |  '+String(P0.group).replace(/^Decorama\s*/,o.f+' ')+(P0.info?'  |  '+P0.info:'')+'  |  '+o.q+': 1');
-  const txt=[o.h+',','',o.a,'',o.i,'',...rows,'',o.o,'',o.n+': ',o.d+': ',o.t+': ','',o.g,'','--',o.z,'https://baderdesign.github.io/wandstudio/'].join('\n');
+  const txt=[o.h+',','',o.a,'',o.i,'',...rows,'',o.o,'',o.n+': ',o.d+': ',o.t+': ','',o.g,'','--',o.z,APP_HOME].join('\n');
   $('#ordTxt').textContent=txt;$('#ordInfo').textContent=I18N.tr('Decorama-Schablonen in dieser Gestaltung')+': '+L.length;
   $('#ordMail').href='mailto:'+DEC_MAIL+'?subject='+encodeURIComponent(o.s)+'&body='+encodeURIComponent(txt);$('#ordSheet').hidden=false}
 $('#ordDec').onclick=openOrder;$('#ordClose').onclick=()=>{$('#ordSheet').hidden=true};
 $('#ordCopy').onclick=async()=>{const t=$('#ordTxt').textContent;try{await navigator.clipboard.writeText(t);toast('Text kopiert.',2000)}catch(e){const r=document.createRange();r.selectNodeContents($('#ordTxt'));const sl=getSelection();sl.removeAllRanges();sl.addRange(r);toast('Text markiert – jetzt kopieren.',2600)}};
 /* ---------- Datenblatt: Technik, Hersteller, Farbtöne, Schablonen ---------- */
-function makeSheet(){const T=x=>(typeof I18N!=='undefined'?I18N.tr(x):x);
+function makeSheet(o){o=o||{};const T=x=>(typeof I18N!=='undefined'?I18N.tr(x):x);
   const ew=state.editWall,bf=state.before;state.editWall=false;state.before=false;render();
-  const SW=1240,M=70,CW=SW-2*M,img=cv,ih=Math.round(CW*img.height/img.width);
+  const SW=1240,M=70,CW=SW-2*M,img=cv,ih=Math.min(Math.round(CW*img.height/img.width),o.kunde?600:1e5),iw=Math.round(ih*img.width/img.height),ix=M+Math.round((CW-iw)/2);
   const nf=(v,d)=>{const x=(+v).toFixed(d);return(typeof I18N!=='undefined'&&I18N.lang!=='de'&&I18N.lang!=='it'&&I18N.lang!=='hu')?x:x.replace('.',',')};const hex=c=>(c||'').toUpperCase(),col=(c,n)=>n?n+'  ·  '+hex(c):hex(c),pct=v=>Math.round((v??0)*100)+' %';
   const effN=k=>{const e=EFFECTS.find(x=>x[0]===k)||EFFECTS_ALL.find(x=>x[0]===k);return e?T(e[1]):k},modeN=k=>{const m=MODES.find(x=>x[0]===k);return m?T(m[1]):k};
   const NOVA={africa:'Novacolor',calce:'Novacolor',ironic:'Novacolor'};
   const secs=[];const ws=state.wallW?state.wallW:state.wallM;
-  secs.push({h:T('Wand'),rows:[[T('Ausgangsbild'),state.src==='foto'?T('Eigenes Foto'):T('Standardwand')],[T('Wandmass'),nf(ws,2)+' × '+nf(state.wallH,2)+' m'],[T('Fläche ca.'),nf(ws*state.wallH,1)+' m²']]});
+  if(!o.kunde)secs.push({h:T('Wand'),rows:[[T('Ausgangsbild'),state.src==='foto'?T('Eigenes Foto'):T('Standardwand')],[T('Wandmass'),nf(ws,2)+' × '+nf(state.wallH,2)+' m'],[T('Fläche ca.'),nf(ws*state.wallH,1)+' m²']]});
   const b=state.base;if(b.on){const r=[[T('Technik'),effN(b.effect)]];if(NOVA[b.effect])r.push([T('Hersteller'),NOVA[b.effect]]);
     if(b.effect==='sichtbeton'||b.effect==='beton')r.push([T('Ausführung'),b.bfin==='deckend'?T('Deckend gestrichen'):T('Lasiert (mit Wolken)')]);
     r.push([T('Farbton'),col(b.color,b.ncs),b.color]);secs.push({h:T('Grundton'),rows:r})}
@@ -2400,32 +2430,94 @@ function makeSheet(){const T=x=>(typeof I18N!=='undefined'?I18N.tr(x):x);
     if(L.rot)ex.push(T('Drehung')+' '+Math.round(L.rot)+'°');r.push([T('Ausführung'),ex.length?ex.join(', '):T('Standard')]);
     if(L.island){r.push([T('Insel'),T('Als Insel mit ausgebrochenem Rand')]);if(L.islandEff)r.push([T('Technik in der Insel'),effN(L.islandEff)]);r.push([T('Grund in der Insel'),col(L.islandColor,L.islandNcs),L.islandColor]);
       if(L.glaze)r.push([T('Lasur über die Insel'),col(L.glazeColor,L.glazeNcs)+'  ·  '+pct(L.glazeAlpha),L.glazeColor])}
-    secs.push({h:T('Schablone')+' '+(i+1),rows:r})});
+    secs.push({h:T('Schablone')+' '+(i+1),rows:o.kunde?r.filter(x=>x[0]!==T('Deckkraft')&&x[0]!==T('Anordnung')&&!(x[0]===T('Ausführung')&&x[1]===T('Standard'))):r})});
   const g=state.gi;if(g&&g.on){const r=[[T('Grund in der Insel'),col(g.color,g.ncs),g.color]];if(g.eff)r.unshift([T('Technik in der Insel'),effN(g.eff)]);if(g.glaze)r.push([T('Lasur über die Insel'),col(g.glazeColor,g.glazeNcs)+'  ·  '+pct(g.glazeAlpha),g.glazeColor]);secs.push({h:T('Gemeinsame Insel über alle Schablonen'),rows:r})}
   const sc=state.scene||{};if(sc.kitchen&&sc.kitchen.length&&sc.kColor){const kc=(typeof KCOL!=='undefined'&&KCOL.find?KCOL.find(x=>x[0]===sc.kColor||x[1]===sc.kColor):null);secs.push({h:T('Küche'),rows:[[T('Fronten'),kc?T(kc[0]):hex(sc.kColor)]]})}
+  const F='"Archivo",system-ui,sans-serif';
+  if(o.note&&o.note.trim()){const mt=mk(4,4).getContext('2d');mt.font='500 23px '+F;const lines=[];o.note.trim().split(/\n/).forEach(par=>{let ln='';par.split(/\s+/).forEach(w=>{const tr=ln?ln+' '+w:w;if(mt.measureText(tr).width>CW-40&&ln){lines.push(ln);ln=w}else ln=tr});lines.push(ln)});secs.push({h:T('Notiz'),text:lines})}
+  if(o.price&&o.price.trim())secs.push({h:T('Preis'),price:o.price.trim()});
   // Höhe berechnen
-  const RH=46,HH=64;let H=M+150+ih+40;secs.forEach(x=>H+=HH+x.rows.length*RH+18);H+=150;H=Math.max(H,Math.round(SW*1.414));
-  const c=mk(SW,H),t=c.getContext('2d'),F='"Archivo",system-ui,sans-serif';
+  const RH=46,HH=64,LH=36;let H=M+150+ih+40;secs.forEach(x=>H+=HH+(x.text?x.text.length*LH+20:x.price?70:x.rows.length*RH)+18);H+=o.kunde?120:150;{const A4=Math.round(SW*297/210);if(!o.kunde)H=Math.max(H,Math.round(SW*1.414));else if(H<A4)H=A4}
+  const c=mk(SW,H),t=c.getContext('2d');c._brk=[];
   t.fillStyle='#fbf8f2';t.fillRect(0,0,SW,H);t.fillStyle='#16140f';t.fillRect(0,0,SW,14);
   const g2=t.createLinearGradient(0,0,SW,0);g2.addColorStop(0,'#9c7322');g2.addColorStop(.5,'#f6dc8a');g2.addColorStop(1,'#9c7322');t.fillStyle=g2;t.fillRect(0,14,SW,4);
   let y=M;const logo=document.querySelector('.logo');if(logo&&logo.complete&&logo.naturalWidth){try{t.drawImage(logo,M,y,96,96)}catch(e){}}
   t.textBaseline='alphabetic';t.fillStyle='#a77a1c';t.font='800 22px '+F;t.fillText('BADER WALLSTUDIO',M+120,y+30);
-  t.fillStyle='#211a10';t.font='800 44px '+F;t.fillText(T('Datenblatt Wandgestaltung'),M+120,y+80);
+  t.fillStyle='#211a10';t.font='800 44px '+F;t.fillText(o.kunde?T('Ihre Wandgestaltung'):T('Datenblatt Wandgestaltung'),M+120,y+80);
   t.textAlign='right';t.fillStyle='#6e5f44';t.font='500 22px '+F;const dt=new Date().toLocaleDateString('de-CH',{day:'2-digit',month:'2-digit',year:'numeric'});
-  t.fillText(dt,SW-M,y+30);const pn=(document.getElementById('projName')||{}).value;if(pn){t.fillStyle='#211a10';t.font='700 24px '+F;t.fillText(pn,SW-M,y+64)}t.textAlign='left';
-  y+=130;t.save();t.shadowColor='rgba(0,0,0,.18)';t.shadowBlur=24;t.shadowOffsetY=8;t.fillStyle='#fff';t.fillRect(M,y,CW,ih);t.restore();t.drawImage(img,M,y,CW,ih);y+=ih+50;
+  t.fillText(dt,SW-M,y+30);const pn=o.kunde?(o.title||''):(document.getElementById('projName')||{}).value;if(pn){t.fillStyle='#211a10';t.font='700 24px '+F;t.fillText(pn,SW-M,y+64)}t.textAlign='left';
+  y+=130;t.save();t.shadowColor='rgba(0,0,0,.18)';t.shadowBlur=24;t.shadowOffsetY=8;t.fillStyle='#fff';t.fillRect(ix,y,iw,ih);t.restore();t.drawImage(img,ix,y,iw,ih);y+=ih+50;
   const KX=M+20,VX=M+330;
-  secs.forEach(sec=>{t.fillStyle='#211a10';t.font='800 26px '+F;t.fillText(sec.h.toUpperCase(),M,y+28);t.fillStyle='#d6a73e';t.fillRect(M,y+40,CW,2);y+=HH;
+  secs.forEach(sec=>{c._brk.push(y-10);t.fillStyle='#211a10';t.font='800 26px '+F;t.fillText(sec.h.toUpperCase(),M,y+28);t.fillStyle='#d6a73e';t.fillRect(M,y+40,CW,2);y+=HH;
+    if(sec.text){t.fillStyle='#211a10';t.font='500 23px '+F;sec.text.forEach(l=>{t.fillText(l,KX,y+26);y+=LH});y+=38;return}
+    if(sec.price){t.fillStyle='#f1ebdf';t.fillRect(M,y-4,CW,62);t.fillStyle='#211a10';t.font='800 32px '+F;t.fillText(sec.price,KX,y+38);y+=88;return}
     sec.rows.forEach((r,j)=>{if(j%2===0){t.fillStyle='#f1ebdf';t.fillRect(M,y-4,CW,RH)}t.fillStyle='#6e5f44';t.font='600 21px '+F;t.fillText(r[0],KX,y+26);
       let vx=VX;if(r[2]){t.fillStyle=r[2];t.beginPath();t.arc(vx+13,y+19,13,0,7);t.fill();t.strokeStyle='rgba(0,0,0,.25)';t.lineWidth=1.5;t.stroke();vx+=38}
       t.fillStyle='#211a10';t.font='600 22px '+F;let v=String(r[1]);while(t.measureText(v).width>SW-M-20-vx&&v.length>4)v=v.slice(0,-2);if(v!==String(r[1]))v+='…';t.fillText(v,vx,y+26);y+=RH});y+=18});
-  t.fillStyle='#d9ccb2';t.fillRect(M,H-110,CW,1);t.fillStyle='#6e5f44';t.font='500 19px '+F;
+  c._brk.push(H-130);c._foot=H-130;t.fillStyle='#d9ccb2';t.fillRect(M,H-110,CW,1);t.fillStyle='#6e5f44';t.font='500 19px '+F;
   t.fillText(T('Farbtöne am Bildschirm können vom Original abweichen. Vor der Ausführung Musterfläche freigeben.'),M,H-74);
-  t.fillStyle='#a77a1c';t.font='700 19px '+F;t.fillText(T('Erstellt mit Wallstudio'),M,H-44);
+  t.fillStyle='#a77a1c';t.font='700 19px '+F;t.fillText(o.kunde?'Bader Wallstudio':T('Erstellt mit Wallstudio'),M,H-44);
   state.editWall=ew;state.before=bf;render();return c}
 function showSheet(on){const ov=$('#overlay');if(on){$('#outImg').src=makeSheet().toDataURL('image/jpeg',.9);ov.classList.add('ds');$('#dsBtn').textContent='Bild';ov.scrollTop=0}
   else{const ew=state.editWall;state.editWall=false;render();$('#outImg').src=cv.toDataURL('image/jpeg',.92);state.editWall=ew;render();ov.classList.remove('ds');$('#dsBtn').textContent='Datenblatt'}}
 $('#dsBtn').onclick=()=>showSheet(!$('#overlay').classList.contains('ds'));
+/* ---------- Kunden-PDF (ohne Server, wird über WhatsApp/E-Mail geteilt) ---------- */
+function sheetPages(src){const PW=src.width,PH=Math.round(PW*297/210),TOP=60,BOT=70;const pages=[];let y0=0,first=true;
+  while(y0<src.height-4){const room=PH-(first?0:TOP)-BOT;let y1=y0+room;
+    if(y1>=src.height||src.height-y0<=PH-(first?0:TOP))y1=src.height;else{const b=(src._brk||[]).filter(v=>v>y0+80&&v<=y1);if(b.length)y1=Math.max(...b)}
+    const c=mk(PW,PH),t=c.getContext('2d');t.fillStyle='#fbf8f2';t.fillRect(0,0,PW,PH);
+    if(!first){t.fillStyle='#16140f';t.fillRect(0,0,PW,14);const g=t.createLinearGradient(0,0,PW,0);g.addColorStop(0,'#9c7322');g.addColorStop(.5,'#f6dc8a');g.addColorStop(1,'#9c7322');t.fillStyle=g;t.fillRect(0,14,PW,4)}
+    t.drawImage(src,0,y0,PW,y1-y0,0,first?0:TOP,PW,y1-y0);pages.push(c);y0=y1;first=false}
+  if(pages.length>1)pages.forEach((c,i)=>{const t=c.getContext('2d');t.fillStyle='#6e5f44';t.font='500 18px "Archivo",system-ui,sans-serif';t.textAlign='right';t.fillText((i+1)+' / '+pages.length,PW-70,PH-30)});
+  return pages}
+async function canvasJpeg(c,q){const b=await new Promise(r=>c.toBlob(r,'image/jpeg',q));return new Uint8Array(await b.arrayBuffer())}
+async function makePdf(pages){const enc=new TextEncoder(),parts=[],offs=[];let len=0;const push=x=>{const u=typeof x==='string'?enc.encode(x):x;parts.push(u);len+=u.length};
+  const n=pages.length,W=595.28,H=841.89;push('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n');
+  const obj=(id,body)=>{offs[id]=len;push(id+' 0 obj\n');body.forEach(push);push('\nendobj\n')};
+  const kids=pages.map((_,i)=>(3+i*3)+' 0 R').join(' ');
+  obj(1,['<< /Type /Catalog /Pages 2 0 R >>']);obj(2,['<< /Type /Pages /Kids ['+kids+'] /Count '+n+' >>']);
+  for(let i=0;i<n;i++){const c=pages[i],jp=await canvasJpeg(c,.86),pid=3+i*3,iid=pid+1,cid=pid+2,cs='q '+W+' 0 0 '+H+' 0 0 cm /Im0 Do Q';
+    obj(pid,['<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+W+' '+H+'] /Resources << /XObject << /Im0 '+iid+' 0 R >> >> /Contents '+cid+' 0 R >>']);
+    obj(iid,['<< /Type /XObject /Subtype /Image /Width '+c.width+' /Height '+c.height+' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+jp.length+' >>\nstream\n',jp,'\nendstream']);
+    obj(cid,['<< /Length '+cs.length+' >>\nstream\n'+cs+'\nendstream'])}
+  const total=3+n*3,xo=len;let x='xref\n0 '+total+'\n0000000000 65535 f \n';for(let i=1;i<total;i++)x+=String(offs[i]).padStart(10,'0')+' 00000 n \n';
+  push(x+'trailer\n<< /Size '+total+' /Root 1 0 R /Info << /Producer (Bader Wallstudio) /Title (Wandgestaltung) >> >>\nstartxref\n'+xo+'\n%%EOF\n');
+  return new Blob(parts,{type:'application/pdf'})}
+function saveBlob(b,name){const u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),60000)}
+async function shareOrSave(b,name,title){const f=new File([b],name,{type:b.type});
+  try{if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:title});return 'share'}}catch(e){if(e&&e.name==='AbortError')return 'abort'}
+  saveBlob(b,name);return 'save'}
+const KP={get(k){try{return localStorage.getItem('ws-kpdf-'+k)||''}catch(e){return ''}},set(k,v){try{localStorage.setItem('ws-kpdf-'+k,v)}catch(e){}}};
+function kpdfName(){const t=($('#kpTitle').value||'Wandgestaltung').replace(/[^\p{L}\p{N} _-]+/gu,'').trim().replace(/\s+/g,'-')||'Wandgestaltung';return 'Bader-Wallstudio-'+t+'-'+new Date().toISOString().slice(0,10)}
+function kpdfOpts(){return{kunde:true,title:$('#kpTitle').value.trim(),note:$('#kpNote').value,price:$('#kpPrice').value}}
+function kpdfPrev(){const c=makeSheet(kpdfOpts()),pg=sheetPages(c);$('#kpPrev').innerHTML='';pg.forEach(p=>{const im=new Image();im.src=p.toDataURL('image/jpeg',.7);im.alt='';$('#kpPrev').appendChild(im)});$('#kpInfo').textContent=pg.length===1?I18N.tr('1 Seite A4'):pg.length+' '+I18N.tr('Seiten A4');return pg}
+function openKpdf(){const pid=curProject||'';const last=KP.get('pid');if(last!==pid){$('#kpNote').value='';$('#kpPrice').value=''}else{$('#kpNote').value=KP.get('note');$('#kpPrice').value=KP.get('price')}
+  $('#kpTitle').value=KP.get('pid')===pid&&KP.get('title')?KP.get('title'):(($('#projName')||{}).value||'');$('#kpdfSheet').hidden=false;kpdfPrev()}
+function kpdfKeep(){KP.set('pid',curProject||'');KP.set('title',$('#kpTitle').value);KP.set('note',$('#kpNote').value);KP.set('price',$('#kpPrice').value)}
+let kpT=0;['kpTitle','kpNote','kpPrice'].forEach(id=>$('#'+id).addEventListener('input',()=>{kpdfKeep();clearTimeout(kpT);kpT=setTimeout(kpdfPrev,500)}));
+async function kpdfRun(mode){const btn=mode==='img'?$('#kpImg'):mode==='save'?$('#kpSave'):$('#kpShare');const old=btn.textContent;btn.disabled=true;btn.textContent=I18N.tr('Wird erstellt …');
+  try{kpdfKeep();const nm=kpdfName();let b,fn;
+    if(mode==='img'){b=await new Promise(r=>makeSheet(kpdfOpts()).toBlob(r,'image/jpeg',.88));fn=nm+'.jpg'}else{b=await makePdf(sheetPages(makeSheet(kpdfOpts())));fn=nm+'.pdf'}
+    const r=mode==='save'?(saveBlob(b,fn),'save'):await shareOrSave(b,fn,I18N.tr('Ihre Wandgestaltung'));
+    if(r==='save')toast(I18N.tr('Gespeichert')+': '+fn,3200)}
+  catch(e){console.error(e);toast(I18N.tr('Das hat nicht geklappt. Bitte nochmals versuchen.'),3200)}
+  finally{btn.disabled=false;btn.textContent=old}}
+$('#expKpdf').onclick=openKpdf;$('#kpClose').onclick=()=>{$('#kpdfSheet').hidden=true};
+$('#kpShare').onclick=()=>kpdfRun('share');$('#kpSave').onclick=()=>kpdfRun('save');$('#kpImg').onclick=()=>kpdfRun('img');
+/* ---------- Projekte sichern / laden (für Gerätewechsel und Umzug) ---------- */
+const BK_KEYS=k=>/^ws-(custom-|config$|area$|furnbar$|ui-mode$|lang$)/.test(k);
+async function backupProjects(){const b=$('#projBackup');b.disabled=true;try{const all=await idbDo('readonly',st=>st.getAll());const ls={};try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(BK_KEYS(k))ls[k]=localStorage.getItem(k)}}catch(e){}
+  const data={app:'Bader Wallstudio',kind:'projekte',ver:1,appVer:APP_VER,date:new Date().toISOString(),projects:all.filter(p=>p.id!=='__ki'),local:ls};
+  const blob=new Blob([JSON.stringify(data)],{type:'application/json'}),fn='Wallstudio-Projekte-'+new Date().toISOString().slice(0,10)+'.wallstudio';
+  const r=await shareOrSave(blob,fn,'Wallstudio Projekte');if(r!=='abort')toast(data.projects.length+' '+I18N.tr('Projekte gesichert')+' – '+fn,3600)}
+  catch(e){console.error(e);toast(I18N.tr('Sichern hat nicht geklappt.'),3200)}finally{b.disabled=false}}
+async function restoreProjects(file){try{const d=JSON.parse(await file.text());if(!d||d.app!=='Bader Wallstudio'||!Array.isArray(d.projects))throw new Error('fmt');
+  const have=new Map((await idbDo('readonly',st=>st.getAll())).map(p=>[p.id,p]));let neu=0,upd=0;
+  for(const p of d.projects){if(!p||!p.id||p.id==='__ki')continue;const h=have.get(p.id);if(h&&(h.date||0)>=(p.date||0))continue;await idbDo('readwrite',st=>st.put(p));h?upd++:neu++}
+  if(d.local)Object.entries(d.local).forEach(([k,v])=>{if(BK_KEYS(k)){try{if(localStorage.getItem(k)==null||/^ws-custom-/.test(k))localStorage.setItem(k,v)}catch(e){}}});
+  listProjects();toast(I18N.tr('Projekte geladen')+': '+neu+' '+I18N.tr('neu')+', '+upd+' '+I18N.tr('aktualisiert'),3600)}
+  catch(e){console.error(e);toast(I18N.tr('Diese Datei ist keine Wallstudio-Sicherung.'),3600)}}
+$('#projBackup').onclick=backupProjects;$('#projRestore').onclick=()=>$('#projFile').click();$('#projFile').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)restoreProjects(f)};
 
 
 /* ---------- Start: Beispiel ---------- */
@@ -2798,8 +2890,8 @@ void main(){vec3 n0=normalize(vN);vec3 n=n0;if(uHas>.5){float dx=hh(vUV+vec2(uTx
       [['nightL',-1],['nightR',1]].forEach(([nk,sg])=>item(nk,0,(box,q,glass,pad,cyl,blob,bar)=>{const x=sg*(bw/2+.32),zf=.4205;blob(x-.32,x+.32,0,.55);box(x-.24,x+.24,Y(.3),Y(.52),.02,.42,OK);
         q([x-.21,Y(.32),zf],[x+.21,Y(.32),zf],[x+.21,Y(.322),zf],[x-.21,Y(.322),zf],[0,0,1],DK);q([x-.21,Y(.49),zf],[x+.21,Y(.49),zf],[x+.21,Y(.492),zf],[x-.21,Y(.492),zf],[0,0,1],DK);box(x-.03,x+.03,Y(.475),Y(.485),.42,.43,MB);
         [[x-.21,.05],[x+.21,.05],[x-.21,.39],[x+.21,.39]].forEach(([lx,lz])=>bar([lx,Y(0),lz],[lx,Y(.3),lz],.014,MB));tlamp(cyl,x-.1,.2,.52,.2,.075);box(x+.02,x+.2,Y(.52),Y(.55),.12,.32,TP)}));
-      item('ward2',0,(box,q)=>{const x1=F('ward')?w-1.66:w-.02,x0=x1-.8,zf=.6205;box(x0,x1,Y(0),Y(2.0),.02,.62,GG);const ln=(xa,xb,ya,yb)=>q([xa,ya,zf],[xb,ya,zf],[xb,yb,zf],[xa,yb,zf],[0,0,1],DK);ln((x0+x1)/2-.002,(x0+x1)/2+.002,Y(.03),Y(1.98));[-1,1].forEach(sg=>{const x=(x0+x1)/2+sg*.035;box(x-.006,x+.006,Y(.1),Y(.96),.62,.645,MB)})});
-      item('ward',0,(box,q)=>{const x0=w-1.62,x1=w-.02,zf=.6205;box(x0,x1,Y(0),Y(2.0),.02,.62,GG);const ln=(xa,xb,ya,yb)=>q([xa,ya,zf],[xb,ya,zf],[xb,yb,zf],[xa,yb,zf],[0,0,1],DK);[1,2,3].forEach(i=>{const x=x0+(x1-x0)*i/4;ln(x-.002,x+.002,Y(.03),Y(1.98))});ln(x0+.01,x1-.01,Y(.998),Y(1.002));[[.25,-1],[.25,1],[.75,-1],[.75,1]].forEach(([f,sg])=>{const x=x0+(x1-x0)*f+sg*.035;box(x-.006,x+.006,Y(.1),Y(.96),.62,.645,MB)})});
+      item('ward2',0,(box,q)=>{const x1=F('ward')?w-.06-fWid('ward'):w-.02,x0=x1-.8,zf=.6205;box(x0,x1,Y(0),Y(2.0),.02,.62,GG);const ln=(xa,xb,ya,yb)=>q([xa,ya,zf],[xb,ya,zf],[xb,yb,zf],[xa,yb,zf],[0,0,1],DK);ln((x0+x1)/2-.002,(x0+x1)/2+.002,Y(.03),Y(1.98));[-1,1].forEach(sg=>{const x=(x0+x1)/2+sg*.035;box(x-.006,x+.006,Y(.1),Y(.96),.62,.645,MB)})});
+      item('ward',0,(box,q)=>{const W=fWid('ward'),n=wardMods(W),x0=w-.02-W,x1=w-.02,zf=.6205;box(x0,x1,Y(0),Y(2.0),.02,.62,GG);const ln=(xa,xb,ya,yb)=>q([xa,ya,zf],[xb,ya,zf],[xb,yb,zf],[xa,yb,zf],[0,0,1],DK);for(let i=1;i<2*n;i++){const x=x0+(x1-x0)*i/(2*n);ln(x-.002,x+.002,Y(.03),Y(1.98))}ln(x0+.01,x1-.01,Y(.998),Y(1.002));for(let m=0;m<n;m++)[-1,1].forEach(sg=>{const x=x0+(x1-x0)*(m+.5)/n+sg*.035;box(x-.006,x+.006,Y(.1),Y(.96),.62,.645,MB)})});
       item('dress',0,(box,q,glass,pad,cyl,blob,bar)=>{const x0=-w+.03,x1=-w+.79,zf=.5005;blob(x0-.1,x1+.1,0,.65);box(x0,x1,Y(.14),Y(.86),.02,.5,OK);
         [.165,.395,.625,.845].forEach(y=>q([x0+.02,Y(y),zf],[x1-.02,Y(y),zf],[x1-.02,Y(y+.003),zf],[x0+.02,Y(y+.003),zf],[0,0,1],DK));
         [.28,.51,.735].forEach(y=>[x0+.2,x1-.2].forEach(x=>box(x-.006,x+.006,Y(y-.05),Y(y+.05),.5,.52,MB)));
