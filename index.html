@@ -616,6 +616,7 @@ body.mode-simple #v3dFine,body.mode-simple #v3dFineBox{display:none!important}
 .ownsw input::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:left .15s}
 .ownsw input:checked{background:var(--accent)}.ownsw input:checked::after{left:21px}
 #tcatList .tcrow{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--line)}#tcatList .tcrow .tqh{width:52px;height:52px;flex:none;border-radius:8px;background-size:cover;background-position:center;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}#tcatList .tctx{flex:1;min-width:0;display:flex;flex-direction:column}#tcatList .tctx small{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#tcatList .tcrow .chipb{flex:none;width:auto;min-width:96px;margin:0;display:inline-flex;justify-content:center;padding:8px 14px}#tcatList .tcrow .kmain{color:var(--accent);border-color:var(--accent)}#tcatList .kdel{border-color:#b4442c!important;color:#b4442c}#tcatList{min-width:0}.tcatopen{margin-top:14px;width:100%}
+#varGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}.varcard{display:flex;flex-direction:column;gap:6px;min-width:0}.varcard img{width:100%;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.25);background:#fff}.varcard small{color:var(--muted);min-height:1.2em}.varcard .chipb{align-self:flex-start}.wvar{flex:0 0 auto;min-width:74px;border:1px solid var(--line2);background:transparent;color:var(--muted);border-radius:var(--r-s);font:inherit;font-weight:600;font-size:13px;cursor:pointer;padding:4px 10px}
 #kpPrev img{height:220px;width:auto;border-radius:6px;box-shadow:0 2px 10px rgba(0,0,0,.25);flex:none;background:#fff}
 </style>
 
@@ -1014,6 +1015,12 @@ body.mode-simple #v3dFine,body.mode-simple #v3dFineBox{display:none!important}
     <button class="acclink" id="legalLock" type="button">Nutzung &amp; Datenschutz</button>
   </div>
 </div>
+<div class="accwrap" id="varSheet" hidden><div class="accpanel">
+  <div class="acctop"><b>Varianten</b><button class="sbtn" id="varClose" type="button">Schliessen</button></div>
+  <p class="hint">Zwei ähnliche Gestaltungen zu deiner Wand: verwandter Farbton, andere Schablonenfarbe, ein anderes Motiv desselben Herstellers in seiner echten Grösse, und bei Inseln ein passender Ton oder eine verwandte Technik. Alles bleibt bearbeitbar.</p>
+  <div id="varGrid"></div>
+  <div class="seg" style="margin-top:12px"><button class="chipb" id="varMore" type="button">Neue Vorschläge</button></div>
+</div></div>
 <div class="accwrap" id="tcatSheet" hidden><div class="accpanel">
   <div class="acctop"><b>Technik-Katalog</b><button class="sbtn" id="tcatClose" type="button">Schliessen</button></div>
   <p class="hint">Lade nur die Techniken, die du brauchst. Geladene Techniken funktionieren auch ohne Empfang. «Geladen» antippen, um eine Technik wieder zu entfernen.</p>
@@ -2376,10 +2383,67 @@ function addWall(kind,copy){const d=copy?getDesign():null,role=nwRole;$('#wallSh
   if(kind==='std'){startNewWall();loadWall(blankStd());state.role=role;if(d)applyDesign(d);walls[curWall]=null;renderWallBar();touchProject();showTab(d?'schab':'wand')}
   else{pendingNew={design:d,role};$('#fileIn').click()}}
 function switchWall(i){if(i===curWall)return;walls[curWall]=captureWall();curWall=i;loadWall(walls[i])}
+
+/* ---------- Varianten: aus der aktuellen Wand 2 ähnliche Gestaltungen ableiten (ohne Server, echte bearbeitbare Gestaltungen) ---------- */
+let varSeed=1,VARS=[];const VARS_LAST={};
+function vRng(seed){let a=seed>>>0||1;return()=>{a^=a<<13;a>>>=0;a^=a>>17;a^=a<<5;a>>>=0;return a/4294967296}}
+function hexRgb(h){h=String(h||'#888').replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');const n=parseInt(h,16)||0;return[n>>16&255,n>>8&255,n&255]}
+function colDist(a,b){const A=hexRgb(a),B=hexRgb(b),rm=(A[0]+B[0])/2;return Math.sqrt((2+rm/256)*(A[0]-B[0])**2+4*(A[1]-B[1])**2+(2+(255-rm)/256)*(A[2]-B[2])**2)}
+function lum(h){const[r,g,b]=hexRgb(h);return(.299*r+.587*g+.114*b)/255}
+function nearCols(hex,list){return list.filter(([,c])=>colDist(c,hex)>12).sort((a,b)=>colDist(a[1],hex)-colDist(b[1],hex))}
+function stencilAlt(base,cur,rnd){const dark=lum(base)<.45,ok=ST_COLORS.filter(([,c])=>c.toLowerCase()!==String(cur||'').toLowerCase()&&(dark?lum(c)>.45:true));const L=ok.length?ok:ST_COLORS;return L[Math.floor(rnd()*L.length)]}
+function patFam(k){const p=PATTERNS[k];if(!p)return null;if(p.group)return String(p.group).split(/\s/)[0];return p.preset&&p.realH?'Novacolor':null}
+function patAlt(key,rnd,avoid){const p=PATTERNS[key],fam=patFam(key);if(!p||!fam)return null;const ok=k=>k!==key&&k!==avoid&&patFam(k)===fam;
+  let same=p.group?Object.keys(PATTERNS).filter(k=>ok(k)&&PATTERNS[k].group===p.group):[];if(same.length<3)same=same.concat(Object.keys(PATTERNS).filter(k=>ok(k)&&!same.includes(k)));
+  return same.length?same[Math.floor(rnd()*same.length)]:null}
+/* Insel-Farbe: verwandter Ton, der sich vom (neuen) Grundton klar abhebt */
+/* Insel und weggenommene Stellen sind in Motiv-Einheiten gespeichert: bei neuer Motivgrösse umrechnen, damit sie an der Wand gleich bleiben */
+function keepShape(L,k){if(!k||k===1)return L;const sc=a=>(a||[]).map(st=>({...st,w:st.w*k,pts:(st.pts||[]).map(([u,v])=>[u*k,v*k])}));return{...L,strokes:sc(L.strokes),istrokes:sc(L.istrokes),icenter:[(L.icenter||[0,0])[0]*k,(L.icenter||[0,0])[1]*k]}}
+function islCol(cur,base,rnd){const L=nearCols(cur,BASE_COLORS).filter(([,c])=>colDist(c,base)>45).slice(0,4);return L.length?L[Math.floor(rnd()*L.length)]:null}
+function islTech(cur,rnd){const k0=cur||'kalk',g=techGroup(k0),sib=EFFECTS.map(e=>e[0]).filter(k=>k!==k0&&techGroup(k)===g);return sib.length?sib[Math.floor(rnd()*sib.length)]:null}
+const effName=k=>I18N.tr((EFFECTS.find(e=>e[0]===k)||['',k==null?'Kalk':''])[1]||'Kalk');
+function makeVariants(seed){const rnd=vRng(seed*7919+13),b0={...state.base},L0=state.layers.map(l=>({...l})),g0=cloneGi(state.gi),out=[];
+  const nb=nearCols(b0.color,BASE_COLORS);const pick=i=>nb[Math.min(nb.length-1,(i+Math.floor(rnd()*3))%Math.max(1,Math.min(4,nb.length)))];
+  /* Variante 1: verwandter Grundton, andere Schablonenfarbe, gleiches Motiv */
+  {const c=pick(0),b={...b0,color:c?c[1]:b0.color,ncs:null},tags=[I18N.tr('Grundton')+' '+I18N.tr(c?c[0]:'')];
+    const L=L0.map(l=>{if(!l.pattern)return{...l};const sc=stencilAlt(b.color,l.color,rnd);return{...l,color:sc[1],ncs:null}});
+    {const fl=L.find(l=>l.pattern);if(fl){const nm=(ST_COLORS.find(([,c])=>c===fl.color)||[''])[0];if(nm)tags.push(I18N.tr('Schablone')+' '+I18N.tr(nm))}}
+    /* Inseln: Farbton passend zum neuen Grundton */
+    let it='';L.forEach(l=>{if(!l.island)return;const c=islCol(l.islandColor,b.color,rnd);if(c){l.islandColor=c[1];l.islandNcs=null;it=it||c[0]}});
+    const gi=cloneGi(g0);if(gi.on){const c=islCol(gi.color,b.color,rnd);if(c){gi.color=c[1];gi.ncs=null;it=it||c[0]}}
+    if(it)tags.push(I18N.tr('Insel')+' '+I18N.tr(it));
+    out.push({base:b,layers:L,gi,tags})}
+  /* Variante 2: gleiche Farben, verwandtes Motiv derselben Kollektion und andere Grösse; ohne Schablone: verwandte Technik */
+  {const b={...b0},tags=[];let L=L0.map(l=>({...l}));
+    const withPat=L.filter(l=>l.pattern);
+    if(withPat.length){L=L.map(l=>{if(!l.pattern)return l;for(let i=0;i<(seed%7);i++)rnd();const k=patAlt(l.pattern,rnd,VARS_LAST[l.pattern])||l.pattern;VARS_LAST[l.pattern]=k;const np=PATTERNS[k],ns=np&&np.realH?Math.min(150,Math.round(np.realH)):l.sizeCm;/* Schablonen gibt es nur in ihrer echten Grösse: nie skalieren */return keepShape({...l,pattern:k,sizeCm:ns},(l.sizeCm||40)/ns)});
+      const p=PATTERNS[L.find(l=>l.pattern).pattern];tags.push(I18N.tr('Motiv')+' '+(p?p.label:'')+(p&&p.info?' ('+p.info+')':''))}
+    else{const g=techGroup(b0.effect),sib=EFFECTS.map(e=>e[0]).filter(k=>k!==b0.effect&&techGroup(k)===g);const k=sib.length?sib[Math.floor(rnd()*sib.length)]:null;
+      if(k){b.effect=k;tags.push(I18N.tr('Technik')+' '+I18N.tr((EFFECTS.find(e=>e[0]===k)||['',''])[1]))}
+      const c=nb[Math.min(nb.length-1,1+Math.floor(rnd()*2))];if(c&&(!k||rnd()<.5)){b.color=c[1];b.ncs=null;tags.push(I18N.tr('Grundton')+' '+I18N.tr(c[0]))}}
+    /* Inseln: verwandte Technik in der Insel (Farbe bleibt) */
+    let itk=null;L=L.map(l=>{if(!l.island||rnd()<.35)return l;const k=islTech(l.islandEff,rnd);if(!k)return l;itk=itk||k;const o={...l,islandEff:k==='kalk'?null:k};if(ISL_DC[k]&&!l.islandNcs){o.islandColor=ISL_DC[k]}return o});
+    if(itk)tags.push(I18N.tr('Insel')+': '+effName(itk));
+    out.push({base:b,layers:L,gi:cloneGi(g0),tags})}
+  return out}
+function waitPatterns(L){const ks=[...new Set(L.filter(l=>l.pattern).map(l=>l.pattern))].map(k=>PATTERNS[k]).filter(Boolean);ks.forEach(p=>{try{ensureLoaded(p)}catch(e){}});
+  return new Promise(res=>{const t0=Date.now();(function w(){if(ks.every(p=>p.mask)||Date.now()-t0>4000)return res();setTimeout(w,80)})()})}
+function shotOf(v){const kb=state.base,kl=state.layers,kg=state.gi,ks=state.sel,ew=state.editWall,eo=state.editOut;try{if(v){state.base=v.base;state.layers=v.layers;if(v.gi)state.gi=v.gi}state.editWall=false;state.editOut=false;render();
+    const t=mk(560,Math.max(120,Math.round(560*PH/PW)));t.getContext('2d').drawImage(cv,0,0,t.width,t.height);return t.toDataURL('image/jpeg',.82)}
+  finally{state.base=kb;state.layers=kl;state.gi=kg;state.sel=ks;state.editWall=ew;state.editOut=eo;render()}}
+async function buildVariants(){const g=$('#varGrid');g.innerHTML='<p class="hint">'+I18N.tr('Varianten werden erstellt …')+'</p>';VARS=makeVariants(varSeed);
+  await waitPatterns(VARS.flatMap(v=>v.layers));await new Promise(r=>setTimeout(r,30));
+  const cards=[{title:I18N.tr('Original'),img:shotOf(null),tags:[I18N.tr('deine Wand')],orig:true}].concat(VARS.map((v,i)=>({title:I18N.tr('Variante')+' '+(i+1),img:shotOf(v),tags:v.tags,v})));
+  g.innerHTML='';cards.forEach(cd=>{const d=document.createElement('div');d.className='varcard';const im=new Image();im.src=cd.img;im.alt=cd.title;const h=document.createElement('b');h.textContent=cd.title;const sm=document.createElement('small');sm.textContent=cd.tags.filter(Boolean).join(' · ');
+    const bt=document.createElement('button');bt.type='button';bt.className='chipb'+(cd.orig?'':' kmain');bt.textContent=cd.orig?I18N.tr('Behalten'):I18N.tr('Übernehmen');
+    bt.onclick=()=>{if(!cd.orig){pushHist(true);state.base={...cd.v.base};state.layers=cd.v.layers.map(l=>({...l}));if(cd.v.gi)state.gi=cloneGi(cd.v.gi);if(!state.layers.some(l=>l.id===state.sel))state.sel=state.layers[0]?state.layers[0].id:null;try{syncBase()}catch(e){}try{syncLayers()}catch(e){}schedule();try{touchProject()}catch(e){}toast(I18N.tr('Variante übernommen. Mit «Zurück» kommst du zum Original.'),3000)}$('#varSheet').hidden=true};
+    d.append(im,h,sm,bt);g.appendChild(d)})}
+function openVariants(){if(state.src==='foto'&&!state.wallReady){toast(I18N.tr('Zuerst die Wand fertig einrichten.'),2600);return}$('#varSheet').hidden=false;buildVariants()}
 function renderWallBar(){const h=$('#wallBar');if(!h)return;h.innerHTML='';if(walls[curWall]==null)walls[curWall]={thumb:''};
   walls.forEach((w,i)=>{const b=document.createElement('button');b.type='button';b.className='wthumb';press(b,i===curWall);const th=i===curWall?(state._thumb||(w&&w.thumb)||''):(w&&w.thumb)||'';
     const rn=roleOf(i);b.innerHTML=(th?`<img alt="" src="${th}">`:'<img alt="">')+'<span>'+(rn?I18N.tr(ROLE_N[rn]):I18N.tr('Wand')+' '+(i+1))+'</span>';b.onclick=()=>switchWall(i);h.appendChild(b)});
-  const full=!freeSides().length;const a=document.createElement('button');a.type='button';a.className='wadd';a.textContent=full?I18N.tr('Wände …'):'+ Wand';a.onclick=()=>{$('#delWall').hidden=walls.length<2;syncSideChoice();$('#wallSheet').hidden=false};h.appendChild(a)}
+  const full=!freeSides().length;const a=document.createElement('button');a.type='button';a.className='wadd';a.textContent=full?I18N.tr('Wände …'):'+ Wand';a.onclick=()=>{$('#delWall').hidden=walls.length<2;syncSideChoice();$('#wallSheet').hidden=false};h.appendChild(a);
+  const vb=document.createElement('button');vb.type='button';vb.className='wvar';vb.id='varBtn';vb.textContent='✦ '+I18N.tr('Varianten');vb.onclick=openVariants;h.appendChild(vb)}
 function refreshThumb(){clearTimeout(thumbT);thumbT=setTimeout(()=>{state._thumb=wallThumb();const im=$('#wallBar .wthumb[aria-pressed="true"] img');if(im)im.src=state._thumb},700)}
 $('#partBack').onclick=()=>{exitPart();touchProject()};$('#addVor').onclick=()=>addPart('vor');$('#addNi').onclick=()=>addPart('ni');
 $('#nwStd').onclick=()=>addWall('std',false);$('#nwStdCopy').onclick=()=>addWall('std',true);
@@ -2425,7 +2489,7 @@ $('#projBtn').onclick=()=>{$('#projSheet').hidden=false;listProjects()};$('#proj
 $('#projSave').onclick=()=>saveProject();
 $('#projNew').onclick=()=>{curProject=null;$('#projName').value='';walls=[null];curWall=0;state._thumb='';loadWall(blankStd());$('#projSheet').hidden=true;toast('Neues Projekt begonnen.',1500)};
 $('#closeOv').onclick=()=>{$('#overlay').hidden=true};
-const APP_VER=146,APP_LABEL='1.0.3';
+const APP_VER=148,APP_LABEL='1.0.3';
 
 /* ---------- KI: Wand antippen – läuft auf eigener Seite (ki.html), damit genug Speicher frei ist ---------- */
 const AI=(function(){
@@ -2587,7 +2651,7 @@ async function kpdfRun(mode){const btn=mode==='img'?$('#kpImg'):mode==='save'?$(
     if(r==='save')toast(I18N.tr('Gespeichert')+': '+fn,3200)}
   catch(e){console.error(e);toast(I18N.tr('Das hat nicht geklappt. Bitte nochmals versuchen.'),3200)}
   finally{btn.disabled=false;btn.textContent=old}}
-$('#expKpdf').onclick=openKpdf;$('#tcatClose').onclick=()=>{$('#tcatSheet').hidden=true;tcatArm=null};$('#tcatQ').addEventListener('input',tcatRender);$('#kpClose').onclick=()=>{$('#kpdfSheet').hidden=true};
+$('#expKpdf').onclick=openKpdf;$('#varClose').onclick=()=>{$('#varSheet').hidden=true};$('#varMore').onclick=()=>{varSeed++;buildVariants()};$('#tcatClose').onclick=()=>{$('#tcatSheet').hidden=true;tcatArm=null};$('#tcatQ').addEventListener('input',tcatRender);$('#kpClose').onclick=()=>{$('#kpdfSheet').hidden=true};
 $('#kpShare').onclick=()=>kpdfRun('share');$('#kpSave').onclick=()=>kpdfRun('save');$('#kpImg').onclick=()=>kpdfRun('img');
 /* ---------- Projekte sichern / laden (für Gerätewechsel und Umzug) ---------- */
 const BK_KEYS=k=>/^ws-(custom-|config$|area$|furnbar$|ui-mode$|lang$)/.test(k);
