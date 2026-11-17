@@ -1195,7 +1195,7 @@ const state={
 };
 let nextId=1;
 function cloneScene(sc){const o={...(sc||{})};if(o.kitchen)o.kitchen=o.kitchen.map(x=>({...x}));return o}
-function newLayer(o){return Object.assign({id:nextId++,pattern:null,mode:'flaeche',color:'#c9a24a',ncs:null,sizeCm:40,opacity:.85,metallic:true,relief:false,ox:0,oy:0,x:W/2,y:H*.35,
+function newLayer(o){return Object.assign({id:nextId++,pattern:null,mode:'flaeche',color:'#c9a24a',ncs:null,sizeCm:40,opacity:.85,metallic:true,relief:true,ox:0,oy:0,x:W/2,y:H*.35,
   spachtel:false,rand:false,amount:.6,seed:(Math.random()*1e6)|0,strokes:[],island:false,islandColor:'#d3c2a4',islandNcs:null,islandAlpha:1,glaze:false,glazeColor:'#8a5a3c',glazeNcs:null,glazeAlpha:.45,glazeCloud:.5,istrokes:[],icenter:[0,0],iscale:1},o)}
 state.tool='move';state.brushCm=12;var gMaskC=null;
 function defGi(){return{on:false,strokes:[],color:'#e6dccb',ncs:null,alpha:1,glaze:false,glazeColor:'#8a5a3c',glazeNcs:null,glazeAlpha:.45,glazeCloud:.5,seed:(Math.random()*1e6)|0}}
@@ -1793,7 +1793,13 @@ function drawLayer(w,L,mask){const lt=lc.getContext('2d');lt.setTransform(1,0,0,
 
 let sfxC=null;
 /* Technik in der Schablone: wie auf der Wand, aber kräftiger, damit sie auf den feinen Formen sichtbar wird */
-function stFill(t,fx,color){const eff=fx==='kalk'?null:fx;fillTech(t,eff,color);const tx=getTex(eff||'kalk');
+/* Sandkorn für Schablonen aus Kalk / Calce Cruda: rau wie Putz durch Schablone (kleine Poren, helle Körner) */
+const ROUGH_FX={kalk:1,calce:1};let grainCv=null;
+function grainC(){if(grainCv&&grainCv.width===W&&grainCv.height===H)return grainCv;const c=mk(W,H),t=c.getContext('2d'),id=t.createImageData(W,H),d=id.data,r=rng(4711);
+  for(let i=0;i<W*H;i++){let v=128+(r()-.5)*70;const q=r();if(q<.045)v=38+r()*40;else if(q<.075)v=215+r()*40;d[i*4]=d[i*4+1]=d[i*4+2]=v;d[i*4+3]=255}
+  t.putImageData(id,0,0);grainCv=c;return c}
+function stFill(t,fx,color){stFill0(t,fx,color);if(ROUGH_FX[fx]){const g=grainC();t.globalCompositeOperation='overlay';t.globalAlpha=.5;t.drawImage(g,0,0);t.globalCompositeOperation='soft-light';t.globalAlpha=.55;t.drawImage(g,0,0);t.globalAlpha=1;t.globalCompositeOperation='source-over'}}
+function stFill0(t,fx,color){const eff=fx==='kalk'?null:fx;fillTech(t,eff,color);const tx=getTex(eff||'kalk');
   if(tx&&!tx.photo){t.globalCompositeOperation='overlay';t.globalAlpha=.55;t.drawImage(tx.c,0,0,W,H);t.globalCompositeOperation='soft-light';t.globalAlpha=1;t.drawImage(tx.c,0,0,W,H)}
   if(fx==='africa'){const af=getAfrica();t.globalCompositeOperation='soft-light';t.globalAlpha=.9;t.drawImage(af.strokes,0,0);t.globalCompositeOperation='screen';t.globalAlpha=.5;t.drawImage(af.sparkle,0,0)}
   if(fx==='metallic'){const g=t.createLinearGradient(0,0,W,H);[[0,'rgba(255,255,255,.42)'],[.18,'rgba(0,0,0,.22)'],[.4,'rgba(255,255,255,.4)'],[.62,'rgba(0,0,0,.26)'],[.8,'rgba(255,255,255,.36)'],[1,'rgba(0,0,0,.18)']].forEach(([o,c])=>g.addColorStop(o,c));t.globalCompositeOperation='overlay';t.globalAlpha=1;t.fillStyle=g;t.fillRect(0,0,W,H)}
@@ -2152,7 +2158,7 @@ function syncLayers(){const h=$('#layers');h.innerHTML='';
   swatches($('#stSw'),ST_COLORS,L.color,(c,code)=>{L.color=c;L.ncs=code;syncLayers();schedule()},$('#stName'),L.ncs);
   $('#size').value=L.sizeCm;$('#sizeOut').textContent=sizeLabel(L);$('#opac').value=Math.round(L.opacity*100);$('#opacOut').textContent=Math.round(L.opacity*100)+' %';
   $('#rot').value=L.rot||0;$('#rotOut').textContent=(L.rot||0)+'°';
-  stFxChips($('#stFx'),L.fx,k=>{pushHist(true);L.fx=k;syncLayers();schedule()});press($('#tMetal'),L.metallic);press($('#tRelief'),L.relief);press($('#tSpachtel'),L.spachtel);press($('#tRand'),L.rand);
+  stFxChips($('#stFx'),L.fx,k=>{pushHist(true);L.fx=k;if(ROUGH_FX[k])L.metallic=false;syncLayers();schedule()});press($('#tMetal'),L.metallic);press($('#tRelief'),L.relief);press($('#tSpachtel'),L.spachtel);press($('#tRand'),L.rand);
   press($('#tIsland'),L.island);$('#islandCtl').hidden=!L.island;if(L.island)islFxChips($('#islFx'),L.islandEff,k=>{pushHist(true);L.islandEff=k;if(k&&ISL_DC[k]){const n=parseInt((L.islandColor||'#ffffff').slice(1),16);if(k==='ironic'||['#d3c2a4',IRON_DEF].includes((L.islandColor||'').toLowerCase())||((n>>16&255)+(n>>8&255)+(n&255))/3>200){L.islandColor=ISL_DC[k];L.islandNcs=null}}syncLayers();schedule()});swatches($('#islSw'),BASE_COLORS,L.islandColor,(c,code)=>{L.islandColor=c;L.islandNcs=code;syncLayers();schedule()},$('#islName'),L.islandNcs);
   const ia=Math.round((L.islandAlpha??1)*100);$('#islA').value=ia;$('#islAOut').textContent=ia+' %';press($('#tGlaze'),!!L.glaze);$('#glazeCtl').hidden=!L.glaze;
   if(L.glaze){swatches($('#glzSw'),GLAZE_COLORS,L.glazeColor,(c,code)=>{L.glazeColor=c;L.glazeNcs=code;syncLayers();schedule()},$('#glzName'),L.glazeNcs);
@@ -2616,7 +2622,7 @@ $('#projSave').onclick=()=>saveProject();
   sure($('#projNew2'),'Neues leeres Projekt',()=>$('#projNew').click())}
 $('#projNew').onclick=()=>{curProject=null;$('#projName').value='';walls=[null];curWall=0;state._thumb='';loadWall(blankStd());$('#projSheet').hidden=true;toast('Neues Projekt begonnen.',1500)};
 $('#closeOv').onclick=()=>{$('#overlay').hidden=true};
-const APP_VER=157,APP_LABEL='1.0.3';
+const APP_VER=158,APP_LABEL='1.0.3';
 
 /* ---------- KI: Wand antippen – läuft auf eigener Seite (ki.html), damit genug Speicher frei ist ---------- */
 const AI=(function(){
@@ -2935,7 +2941,7 @@ const V3=(function(){
   const COMMON=`precision highp float;
 uniform sampler2D tMac,tMat,tMic,tLay,tLM,tPh;uniform vec3 uCol,uCam,uLight;uniform float uMacG,uMacA,uMicA,uMicRep,uAmp,uBaseOn,uPhotoAlb,uLS;uniform vec2 uWall;uniform mat3 uFlat2Ph;uniform vec2 uPh;
 vec3 lin(vec3 c){return pow(c,vec3(2.2));}
-float Hh(vec2 uv){vec4 lm=texture2D(tLM,uv);float b=(texture2D(tMac,uv).a*uMacA+(texture2D(tMic,uv*vec2(uMicRep,uMicRep*uWall.y/uWall.x)).r-.5)*uMicA)*uAmp;return b*(1.-lm.b)+lm.r*1.6;}
+float Hh(vec2 uv){vec4 lm=texture2D(tLM,uv);float b=(texture2D(tMac,uv).a*uMacA+(texture2D(tMic,uv*vec2(uMicRep,uMicRep*uWall.y/uWall.x)).r-.5)*uMicA)*uAmp;return b*(1.-lm.b)+lm.r*4.6;}
 vec3 env(vec3 r,float ro){float up=r.y*.5+.5;vec3 c=mix(vec3(.10,.09,.08),vec3(1.05,1.0,.92),smoothstep(.2,1.,up));
   float win=pow(max(dot(r,normalize(vec3(-.6,.45,.66))),0.),mix(80.,4.,ro));c+=vec3(1.8,1.7,1.5)*win*(1.-ro*.7);return mix(c,vec3(.45,.42,.38),ro*.6);}
 vec3 photoAt(vec2 uv){vec3 p=uFlat2Ph*vec3(uv.x,1.-uv.y,1.);vec2 q=p.xy/p.z;return texture2D(tPh,vec2(q.x/uPh.x,1.-q.y/uPh.y)).rgb;}
@@ -3268,19 +3274,20 @@ void main(){vec3 n0=normalize(vN);vec3 n=n0;if(uHas>.5){float dx=hh(vUV+vec2(uTx
     try{
     const lay=mk(W,H),lt=lay.getContext('2d');composeWall(lt,{noBase:true,flat:true});
     const hC=mk(W,H),ht=hC.getContext('2d'),mC=mk(W,H),mt=mC.getContext('2d'),tmp=mk(W,H),tt=tmp.getContext('2d');ht.fillStyle='#000';ht.fillRect(0,0,W,H);mt.fillStyle='#000';mt.fillRect(0,0,W,H);
-    const addMask=(drawFn,hv,metal)=>{tt.globalCompositeOperation='source-over';tt.globalAlpha=1;tt.clearRect(0,0,W,H);drawFn(tt);tt.globalCompositeOperation='source-in';tt.fillStyle=`rgb(${hv},${hv},${hv})`;tt.fillRect(0,0,W,H);
+    const addMask=(drawFn,hv,metal,rough)=>{tt.globalCompositeOperation='source-over';tt.globalAlpha=1;tt.clearRect(0,0,W,H);drawFn(tt);tt.globalCompositeOperation='source-in';tt.fillStyle=`rgb(${hv},${hv},${hv})`;tt.fillRect(0,0,W,H);if(rough){tt.globalCompositeOperation='source-atop';tt.globalAlpha=.34;tt.drawImage(grainC(),0,0);tt.globalAlpha=1}
       ht.globalCompositeOperation='lighter';ht.drawImage(tmp,0,0);ht.globalCompositeOperation='source-over';if(metal){tt.fillStyle='#fff';tt.fillRect(0,0,W,H);mt.drawImage(tmp,0,0)}};
     const Lf=L=>Object.assign({},L,{relief:false,metallic:false,opacity:1});
-    const lh=L=>L.relief?165:105;
+    /* Höhe in 3D: Relief = Putz durch Schablone (etwa 3 mm), sonst nur eine Farbschicht */const lh=L=>L.relief?165:24;
     const G=state.gi,gOn=!!(G&&G.on&&G.strokes.length);let gMask=null;
     if(gOn){gMask=mk(W,H);gMask.getContext('2d').drawImage(strokeMask(G.strokes,([u,v])=>[u*W,v*H],W,G.seed),0,0);addMask(t=>t.drawImage(gMask,0,0),120,false)}
-    state.layers.forEach(L=>{if(L.island&&L.istrokes&&L.istrokes.length){const m=mk(W,H);m.getContext('2d').drawImage(islandMask(L),0,0);addMask(t=>t.drawImage(m,0,0),120,false);addMask(t=>drawLayer(t,Lf(L),m),lh(L),L.metallic)}
-      else if(!L.island)addMask(t=>drawLayer(t,Lf(L),gOn?gMask:null),lh(L),L.metallic)});
+    state.layers.forEach(L=>{if(L.island&&L.istrokes&&L.istrokes.length){const m=mk(W,H);m.getContext('2d').drawImage(islandMask(L),0,0);addMask(t=>t.drawImage(m,0,0),120,false);addMask(t=>drawLayer(t,Lf(L),m),lh(L),L.metallic,!!ROUGH_FX[L.fx])}
+      else if(!L.island)addMask(t=>drawLayer(t,Lf(L),gOn?gMask:null),lh(L),L.metallic,!!ROUGH_FX[L.fx])});
     const el=mk(W,H),et=el.getContext('2d');if(state.src==='std'){et.setTransform(f,0,0,f,0,0);drawStdFg(et,null,true);et.setTransform(1,0,0,1,0,0);lt.drawImage(el,0,0)}
     const hd=ht.getImageData(0,0,W,H).data,md=mt.getImageData(0,0,W,H).data,ed=et.getImageData(0,0,W,H).data,out=new Uint8Array(W*H*4);
     let hb=new Float32Array(W*H),mb=new Float32Array(W*H);for(let i=0;i<W*H;i++){hb[i]=hd[i*4];mb[i]=md[i*4]}
     const blur=a=>{const o=new Float32Array(W*H);for(let y=0;y<H;y++)for(let x=0;x<W;x++){let sm=0,c=0;for(let dy=-1;dy<=1;dy++){const yy=y+dy;if(yy<0||yy>=H)continue;for(let dx=-1;dx<=1;dx++){const xx=x+dx;if(xx<0||xx>=W)continue;sm+=a[yy*W+xx];c++}}o[y*W+x]=sm/c}return o};
-    hb=blur(blur(hb));mb=blur(mb);
+    hb=blur(hb);mb=blur(mb);
+    for(let i=0;i<W*H;i++){out[i*4]=hb[i];out[i*4+1]=mb[i];out[i*4+2]=ed[i*4+3]>127?255:0;out[i*4+3]=255}
     if(state.src==='std'&&(state.parts||[]).some(p=>p.own)){state.base=sv.base;state.layers=sv.layers;state.gi=sv.gi;
       (state.parts||[]).forEach((pt,i)=>{if(!pt.own)return;const [x,y,w2,h2]=partRect(pt,W,H),x0=Math.max(0,Math.floor(x)),y0=Math.max(0,Math.floor(y)),x1=Math.min(W,Math.ceil(x+w2)),y1=Math.min(H,Math.ceil(y+h2));for(let yy=y0;yy<y1;yy++)for(let xx=x0;xx<x1;xx++){const k=(yy*W+xx)*4;out[k]=0;out[k+1]=0}});
       renderOwnParts(lt,W,H,{flat:true})}
