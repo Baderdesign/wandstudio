@@ -2622,7 +2622,7 @@ $('#projSave').onclick=()=>saveProject();
   sure($('#projNew2'),'Neues leeres Projekt',()=>$('#projNew').click())}
 $('#projNew').onclick=()=>{curProject=null;$('#projName').value='';walls=[null];curWall=0;state._thumb='';loadWall(blankStd());$('#projSheet').hidden=true;toast('Neues Projekt begonnen.',1500)};
 $('#closeOv').onclick=()=>{$('#overlay').hidden=true};
-const APP_VER=158,APP_LABEL='1.0.3';
+const APP_VER=159,APP_LABEL='1.0.3';
 
 /* ---------- KI: Wand antippen – läuft auf eigener Seite (ki.html), damit genug Speicher frei ist ---------- */
 const AI=(function(){
@@ -3476,7 +3476,7 @@ const ACC=(function(){
   async function login(){const c=$('#accCode').value.trim(),p=$('#accPin').value.trim();if(!c||!p){lock('Bitte Code und PIN eingeben.');return}
     const b=$('#accGo');b.disabled=true;try{const r=await rpc('ws_login',{p_code:c,p_pin:p});
       if(r&&r.ok){ses={token:r.token,name:r.name,admin:r.admin,t:Date.now()};save();$('#accPin').value='';if(await devDenied()){await devOut();return}unlock();toast('Willkommen, '+r.name+'!',2500);licCheck();syncContent()}
-      else lock(r&&r.error==='gesperrt'?'Dieser Zugang ist gesperrt.':'Code oder PIN falsch.')}
+      else lock(r&&r.error==='gesperrt'?(r.warten?'Zu viele falsche Versuche. Bitte in '+r.warten+' Minuten nochmals versuchen.':'Dieser Zugang ist gesperrt.'):'Code oder PIN falsch.')}
     catch(e){lock('Keine Verbindung zum Server. Bitte Internet prüfen.')}finally{b.disabled=false}}
   async function logout(){try{if(ses)await rpc('ws_logout',{p_token:ses.token})}catch(e){}ses=null;save();$('#accSheet').hidden=true;lock()}
   /* Admin-Fenster */

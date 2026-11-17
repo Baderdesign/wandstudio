@@ -85,7 +85,7 @@ td .btn.sm{margin:2px 4px 2px 0}
 <div id="layer"></div>
 <script>
 (function(){
-const ADMIN_VER='0.17';
+const ADMIN_VER='0.18';
 const SB_URL='https://ljenfchiwbrstqeliujg.supabase.co',SB_KEY='sb_publishable_R6yLXKZmMJZyBv4vYzAx2Q_WJ4t_ffW';
 const LS='ws-acc';let ses=null;try{ses=JSON.parse(localStorage.getItem(LS)||'null')}catch(e){}
 const save=()=>{try{ses?localStorage.setItem(LS,JSON.stringify(ses)):localStorage.removeItem(LS)}catch(e){}};
@@ -255,7 +255,7 @@ $('#lform').addEventListener('submit',async e=>{e.preventDefault();const c=$('#l
  try{const r=await rpc('ws_login',{p_code:c,p_pin:p});
   if(r&&r.ok){if(!r.admin){try{await rpc('ws_logout',{p_token:r.token})}catch(x){}$('#lerr').textContent='Dieser Zugang hat keine Admin-Rechte.'}
    else{ses={token:r.token,name:r.name,admin:true,t:Date.now()};save();$('#lpin').value='';enter()}}
-  else $('#lerr').textContent=r&&r.error==='gesperrt'?'Dieser Zugang ist gesperrt.':'Code oder PIN falsch.'}
+  else $('#lerr').textContent=r&&r.error==='gesperrt'?(r.warten?'Zu viele falsche Versuche. Bitte in '+r.warten+' Minuten nochmals versuchen.':'Dieser Zugang ist gesperrt.'):'Code oder PIN falsch.'}
  catch(x){$('#lerr').textContent='Keine Verbindung zum Server. Bitte Internet prüfen.'}finally{b.disabled=false}});
 (async function start(){if(!ses||!ses.token){showLogin('');return}
  try{const r=await rpc('ws_check',{p_token:ses.token});if(r&&r.ok&&r.admin){ses.name=r.name;ses.admin=true;ses.t=Date.now();save();enter()}
