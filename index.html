@@ -2635,7 +2635,7 @@ $('#projSave').onclick=()=>saveProject();
   sure($('#projNew2'),'Neues leeres Projekt',()=>$('#projNew').click())}
 $('#projNew').onclick=()=>{curProject=null;$('#projName').value='';walls=[null];curWall=0;state._thumb='';loadWall(blankStd());$('#projSheet').hidden=true;toast('Neues Projekt begonnen.',1500)};
 $('#closeOv').onclick=()=>{$('#overlay').hidden=true};
-const APP_VER=163,APP_LABEL='1.0.3';
+const APP_VER=164,APP_LABEL='1.0.3';
 
 /* ---------- KI: Wand antippen – läuft auf eigener Seite (ki.html), damit genug Speicher frei ist ---------- */
 const AI=(function(){
@@ -3584,7 +3584,7 @@ ACC.wire();
    und werden auf dem schauenden Gerät nicht gespeichert. ---------- */
 const LIVE=(function(){
   let pc=null,dc=null,role=null,code='',pollT=0,sendT=0,firstT=0,last='',imgId=new WeakMap(),nImg=0,sent=new Set(),rxImg=new Map(),rxParts=new Map(),rxCust=new Map(),q=[],applying=false,pend=null;
-  const ICE={iceServers:[{urls:'stun:stun.l.google.com:19302'}]},T=t=>I18N.tr(t);
+  const ICE={iceServers:[{urls:'stun:stun.l.google.com:19302'}]},T=t=>{try{return I18N.tr(t)}catch(_){return t}};
   const msg=t=>{const e=$('#liveMsg');if(e)e.textContent=t};
   function pill(on,t){$('#livePill').hidden=!on;if(t)$('#livePillT').textContent=t}
   function gather(p){return new Promise(r=>{if(p.iceGatheringState==='complete')return r();const t=setTimeout(r,4000);p.addEventListener('icegatheringstatechange',()=>{if(p.iceGatheringState==='complete'){clearTimeout(t);r()}})})}
@@ -3630,7 +3630,8 @@ const LIVE=(function(){
     $('#liveHostB').onclick=host;$('#liveJoinB').onclick=()=>{$('#liveJoinBox').hidden=false;$('#liveCodeBox').hidden=true;$('#liveIn').focus()};
     $('#liveGo').onclick=()=>join($('#liveIn').value);$('#liveIn').onkeydown=e=>{if(e.key==='Enter')join($('#liveIn').value)};$('#liveStop').onclick=()=>stop()}
   return{wire,host,join,stop,state:()=>({role,open:!!(dc&&dc.readyState==='open')})}})();
-LIVE.wire();
+/* Live darf den Start der App nie blockieren: erst nach allem anderen und abgesichert */
+setTimeout(()=>{try{LIVE.wire()}catch(e){console.warn('Live',e)}},0);
 
 const OFF=(function(){const ok='serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')&&!/claude|anthropic/.test(location.hostname);let busy=false;
   function info(t){$('#offInfo').textContent=t}
