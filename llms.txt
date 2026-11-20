@@ -9,7 +9,9 @@ Die App selbst ist nur mit persönlichem Zugang nutzbar. Öffentliche Informatio
 - [App (Anmeldung mit Zugang)](https://baderdesign.github.io/wandstudio/)
 
 ## Kurzfassung
-- Wand: Spachteltechniken wie Abrieb, Kalkputz, Marmorino, Sichtbeton, Lehmputz, Metallic; Schablonen in echter Grösse; Reliefs.
+- Wand: Spachteltechniken wie Abrieb, Kalkputz, Marmorino, Sichtbeton, Lehmputz, Metallic; Schablonen in echter Grösse; erhabene 3D-Reliefs und Spachtelinseln mit Abrisskanten.
+- Licht: Streiflicht, «Licht wandern lassen» (stufenloser Lichtwinkel) und Regler «Struktur / Tiefe» zeigen, wie Licht und Schatten auf der Oberfläche wirken.
+- Testzugang: Maler- und Gipserbetriebe erhalten auf Anfrage einen unverbindlichen Testzugang.
 - Grundriss: Wohnung als grossen Raum zeichnen, Räume darin anlegen, Türen, Fenster, Balkontüren, offene Durchgänge; Flächen in m².
 - Böden und Möbel: Mikrozement, Holz, Platten; Sofa, Esstisch, Betten, Schränke, Küchenzeile, Bad.
 - 3D und VR: Wohnung von oben oder begehbar; Live-Verbindung vom Handy zur Brille mit kurzem Code.
