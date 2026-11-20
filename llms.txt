@@ -1,0 +1,21 @@
+# Bader Wallstudio
+
+> Gestaltungs-App für Maler und Gipser aus der Schweiz (Bader Design, David Bader, Ottenbach ZH). Zeigt Spachteltechniken, Reliefs und Schablonen auf Wänden, zeichnet Grundrisse mit Räumen, Türen, Fenstern, Böden (z. B. Mikrozement) und Möbeln und macht daraus einen 3D-Rundgang, auch mit der VR-Brille Meta Quest.
+
+Die App selbst ist nur mit persönlichem Zugang nutzbar. Öffentliche Informationen stehen auf der Infoseite.
+
+## Seiten
+- [Infoseite: Funktionen, Ablauf, häufige Fragen](https://baderdesign.github.io/wandstudio/info.html)
+- [App (Anmeldung mit Zugang)](https://baderdesign.github.io/wandstudio/)
+
+## Kurzfassung
+- Wand: Spachteltechniken wie Abrieb, Kalkputz, Marmorino, Sichtbeton, Lehmputz, Metallic; Schablonen in echter Grösse; Reliefs.
+- Grundriss: Wohnung als grossen Raum zeichnen, Räume darin anlegen, Türen, Fenster, Balkontüren, offene Durchgänge; Flächen in m².
+- Böden und Möbel: Mikrozement, Holz, Platten; Sofa, Esstisch, Betten, Schränke, Küchenzeile, Bad.
+- 3D und VR: Wohnung von oben oder begehbar; Live-Verbindung vom Handy zur Brille mit kurzem Code.
+- Geräte: Browser auf iPhone, iPad, Android, Computer; Windows-Programm; Meta Quest.
+- Sprachen: Deutsch, Englisch, Italienisch, Ungarisch.
+- Datenschutz: Eigene Fotos und Kundenprojekte bleiben auf dem Gerät.
+
+## Kontakt
+- E-Mail: bader.wallstudio@gmx.ch
