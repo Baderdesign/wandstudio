@@ -2904,7 +2904,7 @@ $('#projSave').onclick=()=>saveProject();
   sure($('#projNew2'),'Neues leeres Projekt',()=>$('#projNew').click())}
 $('#projNew').onclick=async()=>{await flushSave();try{if(FLAT.isOpen())FLAT.close()}catch(_){}ROOM={type:'wohnen',furn:{},floor:{t:'holz',c:'#cfc3ae'}};try{PLAN.clearHist()}catch(_){}curProject=null;$('#projName').value='';walls=[null];curWall=0;state._thumb='';loadWall(blankStd());$('#projSheet').hidden=true;toast('Neues Projekt begonnen.',1500)};
 $('#closeOv').onclick=()=>{$('#overlay').hidden=true};
-const APP_VER=195,APP_LABEL='1.0.3';
+const APP_VER=196,APP_LABEL='1.0.3';
 
 /* ---------- KI: Wand antippen – läuft auf eigener Seite (ki.html), damit genug Speicher frei ist ---------- */
 const AI=(function(){
@@ -4353,7 +4353,7 @@ const FLAT=(function(){
       for(let i=0;i<sx.length-1;i++)for(let j=0;j<sy.length-1;j++){const cx=(sx[i]+sx[i+1])/2,cy=(sy[j]+sy[j+1])/2;if(sx[i+1]-sx[i]<1e-4||sy[j+1]-sy[j]<1e-4)continue;if(holes.some(h=>cx>h.u0&&cx<h.u1&&cy>h.v0&&cy<h.v1))continue;
         const q=[[sx[i],sy[j]],[sx[i+1],sy[j]],[sx[i+1],sy[j+1]],[sx[i],sy[j+1]]];quad(V,q.map(([u,y])=>P(u,y)),[n[0],0,n[1]],q.map(([u,y])=>uvf(u,y)),[d[0],0,d[1]])}}
     function reveals(V,A,d,n,o0,o1,holes){const P=(u,y,o)=>[A[0]+d[0]*u+n[0]*o,y,A[1]+d[1]*u+n[1]*o],z=[[0,0],[1,0],[1,1],[0,1]];holes.forEach(h=>{
-      quad(V,[P(h.u0,h.v0,o0),P(h.u0,h.v0,o1),P(h.u0,h.v1,o1),P(h.u0,h.v1,o0)],[d[0],0,d[1]],z);quad(V,[P(h.u1,h.v0,o0),P(h.u1,h.v0,o1),P(h.u1,h.v1,o1),P(h.u1,h.v1,o0)],[-d[0],0,-d[1]],z);
+      if(!h.x0)quad(V,[P(h.u0,h.v0,o0),P(h.u0,h.v0,o1),P(h.u0,h.v1,o1),P(h.u0,h.v1,o0)],[d[0],0,d[1]],z);if(!h.x1)quad(V,[P(h.u1,h.v0,o0),P(h.u1,h.v0,o1),P(h.u1,h.v1,o1),P(h.u1,h.v1,o0)],[-d[0],0,-d[1]],z);
       if(h.v1<H-1e-3)quad(V,[P(h.u0,h.v1,o0),P(h.u1,h.v1,o0),P(h.u1,h.v1,o1),P(h.u0,h.v1,o1)],[0,-1,0],z);if(h.v0>1e-3)quad(V,[P(h.u0,h.v0,o0),P(h.u1,h.v0,o0),P(h.u1,h.v0,o1),P(h.u0,h.v0,o1)],[0,1,0],z)})}
     let x0=1e9,z0=1e9,x1=-1e9,z1=-1e9;
     const PAR=new Map(R.map(r=>[r,roomParent(R,r)])),depth=r=>{let k=0,q=PAR.get(r);while(q&&k<5){k++;q=PAR.get(q)}return k},
@@ -4366,6 +4366,9 @@ const FLAT=(function(){
       quad(C,[[fx0,H,fz0],[fx1,H,fz0],[fx1,H,fz1],[fx0,H,fz1]],[0,-1,0],[[0,0],[1,0],[1,1],[0,1]]);
       G.SIDES.forEach(sd=>{const[a,b]=G.wallSeg(r,sd),len=Math.hypot(b[0]-a[0],b[1]-a[1]),d=[(b[0]-a[0])/len,(b[1]-a[1])/len],n={n:[0,1],s:[0,-1],w:[1,0],e:[-1,0]}[sd],wo=G.wallOpen(r,sd);
         const holes=wo.list.map(({o,u0,u1})=>({u0,u1,t:o.t,v0:Math.min(H,o.s||0),v1:Math.min(H,(o.s||0)+o.h)})).filter(h=>h.v1-h.v0>.02);
+        /* Ecke, an der beide Wände offen sind: kein Rest-Pfosten stehen lassen */
+        {const near=(p,q)=>Math.abs(p[0]-q[0])<.02&&Math.abs(p[1]-q[1])<.02,openAt=pt=>G.SIDES.some(s2=>{if(s2===sd)return false;const[p2,q2]=G.wallSeg(r,s2),l2=Math.hypot(q2[0]-p2[0],q2[1]-p2[1]);return G.wallOpen(r,s2).list.some(({o,u0,u1})=>o.t==='offen'&&((near(pt,p2)&&u0<.02)||(near(pt,q2)&&u1>l2-.02)))});
+         const oa=openAt(a),ob=openAt(b);holes.forEach(h=>{if(h.t!=='offen')return;if(oa&&h.u0<.02){h.u0=-T2;h.x0=1}if(ob&&h.u1>len-.02){h.u1=len+T2;h.x1=1}})}
         /* Raum im Raum: liegt diese Wand auf der Wand des umschliessenden Raums, übernimmt sie dessen Fenster/Türen dort */
         const onPar=par?colin(par,sd,r):null;if(onPar){G.wallOpen(par,sd).list.forEach(({o,u0,u1})=>{const a0=u0-onPar[0],a1=u1-onPar[0];if(a1>0&&a0<len)holes.push({u0:Math.max(0,a0),u1:Math.min(len,a1),t:o.t,v0:Math.min(H,o.s||0),v1:Math.min(H,(o.s||0)+o.h)})})}
         const cov=kids.map(c=>colin(r,sd,c)).filter(Boolean);
@@ -4380,7 +4383,7 @@ const FLAT=(function(){
           const on=pt=>Math.abs((pt[0]-a[0])*d[1]-(pt[1]-a[1])*d[0])<.02;if(!on(p)||!on(q))return;let u0=(p[0]-a[0])*d[0]+(p[1]-a[1])*d[1],u1=(q[0]-a[0])*d[0]+(q[1]-a[1])*d[1];if(u0>u1)[u0,u1]=[u1,u0];
           iv=iv.flatMap(([s,e])=>{if(u1<=s||u0>=e)return[[s,e]];const o=[];if(u0>s)o.push([s,u0]);if(u1<e)o.push([u1,e]);return o})})});
         cov.forEach(([c0,c1])=>iv=cut(iv,c0-T2,c1+T2));const inner=!!(par&&!onPar);
-        iv.filter(([s,e])=>e-s>.01).forEach(([s,e])=>{const es=s<.001?-T2:s,ee=e>len-.001?len+T2:e,hv=holes.filter(h=>h.u1>s&&h.u0<e).map(h=>({...h,u0:Math.max(s,h.u0),u1:Math.min(e,h.u1)}));
+        iv.filter(([s,e])=>e-s>.01).forEach(([s,e])=>{const es=s<.001?-T2:s,ee=e>len-.001?len+T2:e,hv=holes.filter(h=>h.u1>s&&h.u0<e).map(h=>({...h,u0:Math.max(es,h.u0),u1:Math.min(ee,h.u1)}));
           if(inner){const dO=DT.get(r.id+'|'+sd+'|o');if(dO){face(mat('d'+r.id+sd+'o',{tex:dO,col:[1,1,1],rel:dO.rel,wm:[len,H]}),a,d,[-n[0],-n[1]],T2,es,ee,0,H,hv,(u,y)=>[1-u/len,y/H])}else{const tl=finTile(fin,wc),IV=mat('w'+fin+wc,{tex:tl,col:[1,1,1],rel:tl.rel,wm:[2,2]});face(IV,a,d,[-n[0],-n[1]],T2,es,ee,0,H,hv,(u,y)=>[u/2,y/2])}reveals(mat('rev',{col:hex(wc)}),a,d,[-n[0],-n[1]],0,T2,hv)}else{
           face(mat('ext',{col:hex('#f1ede6')}),a,d,[-n[0],-n[1]],T2,es,ee,0,H,hv,(u,y)=>[0,0]);reveals(mat('ext',{col:hex('#f1ede6')}),a,d,[-n[0],-n[1]],0,T2,hv)}
           const Q=(u,o)=>[a[0]+d[0]*u-n[0]*o,H,a[1]+d[1]*u-n[1]*o];/* Oberkante nicht über offenen Wänden */let qs=[[es,ee]];holes.filter(h=>h.t==='offen').forEach(h=>{qs=qs.flatMap(([a0,a1])=>h.u1<=a0||h.u0>=a1?[[a0,a1]]:[[a0,h.u0],[h.u1,a1]].filter(x=>x[1]-x[0]>.005))});qs.forEach(([q0,q1])=>quad(mat('cap',{col:hex('#3b352b')}),[Q(q0,0),Q(q1,0),Q(q1,T2),Q(q0,T2)],[0,1,0],[[0,0],[1,0],[1,1],[0,1]]))})})});
