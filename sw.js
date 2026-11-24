@@ -1,9 +1,9 @@
 /* Wandstudio – Offline-Speicher */
-const APP='ws-app-v6', ST = 'ws-stencils-v1', EXT = 'ws-ext-v1';
+const APP='ws-app-v7', ST = 'ws-stencils-v1', EXT = 'ws-ext-v1';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-180.png', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(APP).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(APP).then(c => c.addAll(SHELL.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => ![APP, ST, EXT].includes(k)).map(k => caches.delete(k)))).then(() => self.clients.claim()));
@@ -21,10 +21,10 @@ self.addEventListener('fetch', e => {
   if (req.mode === 'navigate' || isApp) {
     const net = fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' });
     const hitP = caches.match(isApp ? './index.html' : req, { ignoreSearch: true });
-    e.respondWith(hitP.then(hit => hit || net.then(r => { if (r.ok && isApp) { const cp = r.clone(); caches.open(APP).then(c => c.put('./index.html', cp)); } return r; }).catch(() => caches.match('./index.html'))));
+    e.respondWith(hitP.then(hit => hit ? hit.clone() : net.then(r => { if (r.ok && isApp) { const cp = r.clone(); caches.open(APP).then(c => c.put('./index.html', cp)); } return r; }).catch(() => caches.match('./index.html'))));
     e.waitUntil(hitP.then(async hit => {
       if (!hit || !isApp) return;
-      const r = await net; if (!r.ok) return;
+      const r = (await net).clone(); if (!r.ok) return;
       const t = await r.text(), old = await hit.clone().text();
       if (old === t) return;
       const c = await caches.open(APP);

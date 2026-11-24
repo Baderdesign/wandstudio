@@ -2951,7 +2951,7 @@ $('#projSave').onclick=()=>saveProject();
   sure($('#projNew2'),'Neues leeres Projekt',()=>$('#projNew').click())}
 $('#projNew').onclick=async()=>{await flushSave();try{if(FLAT.isOpen())FLAT.close()}catch(_){}ROOM={type:'wohnen',furn:{},floor:{t:'holz',c:'#cfc3ae'}};try{PLAN.clearHist()}catch(_){}curProject=null;$('#projName').value='';walls=[null];curWall=0;state._thumb='';loadWall(blankStd());$('#projSheet').hidden=true;toast('Neues Projekt begonnen.',1500)};
 $('#closeOv').onclick=()=>{$('#overlay').hidden=true};
-const APP_VER=199,APP_LABEL='1.0.3';
+const APP_VER=200,APP_LABEL='1.0.3';
 
 /* ---------- KI: Wand antippen – läuft auf eigener Seite (ki.html), damit genug Speicher frei ist ---------- */
 const AI=(function(){
@@ -5014,7 +5014,7 @@ const UPD=(function(){const VER=APP_VER,live=/^https?:$/.test(location.protocol)
   try{const u=new URL(location.href),tk=u.searchParams.get('tech');if(tk){u.searchParams.delete('tech');history.replaceState(null,'',u.pathname+u.search+u.hash);if(EFFECTS.some(e=>e[0]===tk))setTimeout(()=>{try{state.base.effect=tk;state.base.on=true;const CT=custGet(tk);if(CT&&CT.color){state.base.color=CT.color;state.base.ncs=null}syncBase();schedule()}catch(e){console.warn(e)}},700)}}catch(e){}
   try{const u=new URL(location.href);if(u.searchParams.has('upd')){u.searchParams.delete('upd');history.replaceState(null,'',u.pathname+u.search+u.hash);setTimeout(()=>toast(I18N.tr('App ist auf dem neusten Stand')+' (Version '+APP_LABEL+').',2600),400)}}catch(e){}
   async function remote(){const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error(r.status);const t=await r.text();const m=t.match(/const APP_VER=(\d+)/);return{ver:m?+m[1]:0,txt:t,res:r}}
-  async function apply(){try{const x=await remote();if(window.caches){const c=await caches.open('ws-app-v5');const h={headers:{'Content-Type':'text/html; charset=utf-8'}};await c.put('./index.html',new Response(x.txt,h));await c.put('./',new Response(x.txt,h))}
+  async function apply(){try{const x=await remote();if(window.caches){/* in den Speicher des Service Workers schreiben (Name kann je nach sw.js-Version anders sein) */const h={headers:{'Content-Type':'text/html; charset=utf-8'}};let ks=(await caches.keys()).filter(k=>/^ws-app-v\d+$/.test(k));if(!ks.length)ks=['ws-app-v6'];for(const k of ks){const c=await caches.open(k);await c.put('./index.html',new Response(x.txt,h));await c.put('./',new Response(x.txt,h))}}
       if(navigator.serviceWorker){const rg=await navigator.serviceWorker.getRegistration();if(rg)try{await rg.update()}catch(e){}}}catch(e){}
     location.replace(location.pathname+'?upd='+Date.now()+location.hash)}
   async function check(manual){if(!live){if(manual)toast(I18N.tr('In dieser Vorschau ist die App immer aktuell.'),2500);return}
