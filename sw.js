@@ -27,14 +27,19 @@ self.addEventListener('fetch', e => {
       const r = (await net).clone(); if (!r.ok) return;
       const t = await r.text(), old = await hit.clone().text();
       if (old === t) return;
+      // nie eine ältere Version über eine neuere schreiben (GitHub liefert nach dem Hochladen noch einige Minuten die alte Seite)
+      const ver = x => +((x.match(/const APP_VER=(\d+)/) || [])[1] || 0);
+      if (ver(t) < ver(old)) return;
       const c = await caches.open(APP);
-      await c.put('./index.html', new Response(t, { headers: { 'Content-Type': 'text/html; charset=utf-8' } }));
+      const hd = { headers: { 'Content-Type': 'text/html; charset=utf-8' } };
+      await c.put('./index.html', new Response(t, hd));
+      await c.put('./', new Response(t, hd));
     }).catch(() => {}));
     return;
   }
   // Schablonen: zuerst Speicher
   if (url.origin === location.origin && /\.webp$/i.test(url.pathname)) {
-    e.respondWith(caches.open(ST).then(c => c.match(req).then(hit => hit || fetch(req).then(r => { if (r.ok) c.put(req, r.clone()); return r; }))));
+    e.respondWith(caches.open(ST).then(c => c.match(req).then(hit => hit || fetch(req).then(r => { if (r.ok) c.put(req, r.clone()); return r; }).catch(() => Response.error()))));
     return;
   }
   // Übrige eigene Dateien und Bibliotheken/Schriften: Speicher, im Hintergrund auffrischen
